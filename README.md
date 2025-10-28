@@ -1,0 +1,327 @@
+# AppSec-Sentinel
+
+AI-powered security scanner with **cross-file vulnerability analysis** and **automated remediation**. Supports 10+ languages with AWS Bedrock integration.
+
+> 📖 **Open Source** - Licensed under the MIT License. Free for personal and commercial use.
+
+## Features
+
+- **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters
+- **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no client setup needed)
+- **Zero Configuration Required** - Works on any repo out-of-the-box with sensible defaults
+- **Auto-Remediation** - Creates GitHub PRs with AI-generated code fixes (deterministic by default)
+- **Cross-File Analysis** - Traces attack chains across multiple files and languages
+- **AWS Bedrock Integration** - Secure AI processing via Bedrock Sonnet 4.5
+- **10+ Languages** - JavaScript, TypeScript, Python, Java, Go, Ruby, Rust, C#, PHP, Swift, Kotlin
+- **3 Deployment Modes** - Web UI, CLI, and GitHub Actions CI/CD
+- **MCP Server** - Model Context Protocol integration for Claude Desktop
+- **Compliance** - Automatic SBOM generation (CycloneDX & SPDX)
+
+## Quick Start
+
+### What You Get Out-of-the-Box ✅
+
+**Security scanning works immediately** - no extra installations needed:
+- ✅ Semgrep (SAST) - included
+- ✅ Gitleaks (secrets) - auto-detects
+- ✅ Trivy (dependencies) - bundled
+
+**Code quality scanning is optional** - install what you need:
+- ESLint (JavaScript/TypeScript) - `npm install -g eslint`
+- Pylint (Python) - auto-installs if missing
+- Checkstyle, golangci-lint, RuboCop, Clippy, PHPStan - install as needed
+
+> 💡 **Skip code quality?** Just ignore the "⚠️ not installed" warnings - security scanning still works perfectly!
+
+### Prerequisites
+
+Configure AWS credentials in `.env` (only needed for AI auto-remediation):
+```bash
+cp env.example .env
+# Edit .env and set:
+# AI_PROVIDER=aws_bedrock
+# AWS_ACCESS_KEY_ID=...
+# AWS_SECRET_ACCESS_KEY=...
+# AWS_REGION=us-east-1
+```
+
+> 💡 **AWS credentials**: Create an IAM user with Bedrock access or use your existing AWS credentials
+
+### Web Interface
+
+```bash
+./start_web.sh
+# → Opens http://localhost:8000
+```
+
+**Features:**
+- ✅ Tool selection via checkboxes (Semgrep, Trivy, Gitleaks, Code Quality, SBOM)
+- 📊 Visual reports with executive summaries
+- 📥 Download SBOM files (CycloneDX & SPDX)
+
+<img src="https://github.com/user-attachments/assets/2fb72868-25fb-4ea2-ad36-cc9cc156e0e5" width="1171" height="771" style="border:2px solid #ccc; border-radius:8px;" />
+
+### CLI Mode
+
+```bash
+./start_cli.sh
+# → Interactive menu with tool selection, severity levels, and auto-fix options
+```
+
+**Features:**
+- 🔧 Choose which tools to run (SAST, secrets, dependencies, code quality, SBOM)
+- 🎯 Select scan level (critical-high or all)
+- 🤖 Configure auto-remediation mode
+
+<img src="https://github.com/user-attachments/assets/fd81da35-6fb8-49ef-96c6-0c845321c2ac" width="674" height="239" style="border:2px solid #ccc; border-radius:8px;" />
+
+### CI/CD Integration
+```bash
+# Copy workflow template
+cp clients/security-scan.yml .github/workflows/
+
+# Add GitHub secrets:
+#   - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#   - AWS_REGION (must match inference profile region)
+#   - INFERENCE_PROFILE_ID (Bedrock ARN)
+
+git add .github/workflows/security-scan.yml
+git commit -m "Add AppSec-Sentinel security scanning"
+git push
+```
+<img src="https://github.com/user-attachments/assets/873d9f10-ba19-4cb9-b36e-033e18444453" width="1298" height="231" style="border:2px solid #ccc; border-radius:8px;" />
+
+## How It Works
+
+1. **Scan** - Runs 3 scanners in parallel (SAST, secrets, dependencies)
+2. **Analyze** - Cross-file analysis identifies attack chains across files
+3. **Remediate** - AI generates fixes and creates separate PRs for code vs dependencies
+4. **Report** - HTML reports + SBOM files (CycloneDX & SPDX)
+
+## MCP Integration
+
+Turn Claude Desktop into a conversational security expert - scan, analyze, and auto-remediate through natural language.
+
+**Setup:** Add to Claude Desktop config:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "appsec-sentinel": {
+      "command": "/path/to/appsec-sentinel/.venv/bin/python",
+      "args": ["/path/to/appsec-sentinel/mcp/appsec_mcp_server.py"],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      }
+    }
+  }
+}
+```
+
+> 💡 Credentials in `mcp/mcp_env` - no secrets in config! Install gitleaks/trivy first.
+
+**7 Tools:** `scan_repository` • `cross_file_analysis` • `auto_remediate` • `generate_sbom` • `assess_business_impact` • `get_report` • `get_scan_findings`
+
+**Usage:** "Scan nodejs-goof for vulnerabilities" → detailed findings with file paths, line numbers, remediation
+
+[Full MCP setup guide →](mcp/README.md)
+
+<img width="645" height="615" alt="Screenshot 2025-10-09 at 12 00 03 PM" src="https://github.com/user-attachments/assets/fbbc6c2e-8d99-47c8-a115-0ecc9fc2b2d2" />
+
+<img width="781" height="350" alt="Screenshot 2025-10-09 at 12 02 28 PM" src="https://github.com/user-attachments/assets/0c306f32-d00f-48d2-8a86-7dd93a9ab2a3" />
+
+## Auto-Fix Modes
+- **Mode 1**: SAST + secrets (1 PR)
+- **Mode 2**: Dependencies only (1 PR)
+- **Mode 3**: Both (2 separate PRs) ⭐ Recommended
+- **Mode 4**: Scan only (no PRs)
+
+<img src="https://github.com/user-attachments/assets/dee9ec90-9ce0-4167-bc13-58de9f41cce2" width="627" height="240" style="border:2px solid #ccc; border-radius:8px;" />
+
+<img src="https://github.com/user-attachments/assets/814b9e7c-dfc0-45ae-9bb7-5b033c7af06e" width="956" height="239" style="border:2px solid #ccc; border-radius:8px;" />
+
+## Cross-File Analysis
+
+Traces attack paths across multiple files and languages:
+
+- **Multi-Language AST** - Real code understanding (not regex)
+- **Data Flow Tracing** - Entry points → attack paths → sensitive sinks
+- **Framework-Aware** - Express, Spring, Django, Rails, Laravel, ASP.NET
+
+<img width="1167" height="691" alt="Cross-file analysis example" src="https://github.com/user-attachments/assets/70627216-1907-4c1e-979a-af225dfdd5a8" />
+
+## Architecture
+
+```
+Repository → [Semgrep + Gitleaks + Trivy] → Cross-File Analysis → AI (Bedrock Sonnet 4.5) → PRs + Reports
+```
+
+## Code Quality Scanning
+
+AppSec-Sentinel includes code quality scanning that works on any repository without configuration.
+
+**Supported Languages:**
+- ✅ **JavaScript/TypeScript** - ESLint (auto-detects v8 vs v9, uses bundled config)
+- ✅ **Python** - Pylint (auto-installs to virtualenv)
+- ✅ **Java** - Checkstyle (fully integrated in all modes)
+- ✅ **Go** - golangci-lint (fully integrated in all modes)
+- ✅ **Ruby** - RuboCop (fully integrated in all modes)
+- ✅ **Rust** - Clippy (official Rust linter, 600+ checks)
+- ✅ **PHP** - PHPStan (static analysis without running code)
+- 🔜 **C#** - Coming soon (Roslyn Analyzers)
+- 🔜 **Swift** - Coming soon (SwiftLint for iOS/macOS)
+- 🔜 **Kotlin** - Coming soon (ktlint/detekt for Android/JVM)
+
+**How It Works:**
+1. Auto-detects languages by scanning file extensions
+2. Checks for repo config (.eslintrc.json, etc.) - uses it if found
+3. Falls back to bundled config if repo has none
+4. Runs in parallel with security scanners (no performance penalty)
+
+**Example:**
+```bash
+📊 Detected languages: javascript, python
+🔍 Starting scan (3 security + 2 code quality scanners)...
+📋 No ESLint config in repo - using default config
+✅ ESLint (Code Quality): 106 code quality issues
+✅ Pylint (Code Quality): 23 code quality issues
+🎯 Scan complete: 119 security issues + 129 code quality issues
+```
+
+**Zero configuration needed.** AppSec-Sentinel provides sensible defaults that work everywhere.
+
+---
+
+## Optional: Install Code Quality Linters
+
+**Want code quality scanning?** Install the linters for your languages:
+
+```bash
+# JavaScript/TypeScript
+npm install -g eslint
+
+# Python (auto-installs if missing)
+pip install pylint
+
+# Java
+brew install checkstyle  # macOS
+# or download from https://checkstyle.org/
+
+# Go
+brew install golangci-lint  # macOS
+# or: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh
+
+# Ruby
+gem install rubocop
+
+# Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # Includes clippy
+
+# PHP
+composer global require phpstan/phpstan
+```
+
+**Don't want code quality?** Set `APPSEC_CODE_QUALITY=false` in `.env` to skip entirely.
+
+---
+
+## Configuration
+
+Edit `.env` file:
+```bash
+# Tool Selection (CLI/Web only - CI/CD always runs all)
+APPSEC_TOOLS=all                    # 'all' or comma-separated: semgrep,trivy,gitleaks,code_quality,sbom
+                                    # Examples:
+                                    #   all - Run all tools (default)
+                                    #   semgrep,gitleaks - Only SAST + secrets
+                                    #   trivy - Only dependency scanning
+
+# Code quality scanning (enabled by default, gracefully skips if linters not installed)
+APPSEC_CODE_QUALITY=true
+
+# Scan level (only affects security findings)
+APPSEC_SCAN_LEVEL=critical-high  # or 'all'
+
+# AI determinism
+APPSEC_AI_TEMPERATURE=0.0
+
+# Auto-fix settings
+APPSEC_AUTO_FIX=true
+APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
+```
+
+**Bundled Configs** (client repos don't need these):
+- `configs/eslint.config.js` / `eslintrc.v8.json` - JavaScript/TypeScript
+- `configs/checkstyle.xml` - Java
+- `configs/golangci.yml` - Go
+- `configs/rubocop.yml` - Ruby
+- `configs/clippy.toml` - Rust
+- `configs/phpstan.neon` - PHP
+- `configs/.gitleaks.toml` - Secrets
+
+## Documentation
+
+- **[MCP Setup](mcp/README.md)** - Model Context Protocol integration
+- **[Client Setup](clients/SETUP.md)** - Client onboarding guide
+
+## FAQ
+
+**Q: What makes this different from Snyk/SonarQube?**
+
+A: Cross-file attack chain detection. We trace vulnerabilities across multiple files and languages - not just single-file patterns. Plus conversational security analysis via MCP.
+
+**Q: What's the MCP "custom" server doing?**
+
+A: Exposes 6 security tools to Claude Desktop - domain-specific security functions (scan, analyze attack chains, auto-remediate, generate SBOM). Enables conversational security analysis.
+
+**Q: How do I trust AI-generated fixes?**
+
+A: PRs require manual review before merge. Separate PRs for code fixes vs dependencies. Conservative patterns only (SQLi, XSS, input validation). Your tests still validate. 70-80% are safe after quick review.
+
+**Q: What data goes to AWS Bedrock?**
+
+A: Vulnerability metadata, file names, line numbers, code snippets. Never full codebases. Secrets flagged locally, never sent to AI.
+
+**Q: GitHub Actions vs MCP vs CLI vs Web?**
+
+A: Actions = automated PR scans. MCP = conversational analysis with Claude. CLI = consultant deep-dive. Web = team reports. Use what fits your workflow.
+
+**Q: Does this replace existing scanners?**
+
+A: No, it complements them. AppSec-Sentinel includes both security and code quality scanning (via Semgrep). Code quality findings are always shown regardless of scan level. You can keep Snyk for license compliance. AppSec-Sentinel provides cross-file analysis and AI remediation.
+
+**Q: Can I use results from Snyk/Veracode/etc?**
+
+A: Yes. Export to JSON → place in `clients/client_exports/` → run `python src/tool_ingestion.py`. AppSec-Sentinel enhances their findings with cross-file analysis and AI context.
+
+## Development
+
+```bash
+# Run tests
+pytest tests/test_appsec.py -v
+```
+
+## Troubleshooting
+
+```bash
+# Permission issues
+chmod +x start_web.sh start_cli.sh
+
+# Dependency conflicts
+rm -rf .venv && python -m venv .venv
+source .venv/bin/activate && pip install -r requirements.txt
+
+# Enable debug logging
+export APPSEC_DEBUG=true
+export APPSEC_LOG_LEVEL=DEBUG
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="12.0.1">
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/controller/exception/ControllerExceptionHandlerTest.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/jwt/JWTVulnerabilityTest.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/commandInjection/CommandInjectionTest.java">
+<error line="50" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel1_Localhost_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="62" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel1_NoIp_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="73" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_Localhost_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="85" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_NoIp_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="98" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_LocalhostAndSEMICOLON_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="111" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_LocalhostPlusAnd_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="124" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_LocalhostAndCat_command_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="138" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_LocalhostAndUrlEncodedand_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="151" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_LocalhostAndUrlEncodedUpperSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="164" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel2_LocalhostAndUrlEncodedLowerSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="177" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_NoIp_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="190" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_LocalhostAndSEMICOLON_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="203" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_LocalhostPlusAnd_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="216" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_LocalhostAndCat_command_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="230" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_LocalhostAndUrlEncodedand_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="243" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_LocalhostAndUrlEncodedUpperSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="256" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel3_LocalhostAndUrlEncodedLowerSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="269" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_NoIp_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="282" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_LocalhostAndSEMICOLON_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="295" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_LocalhostPlusAnd_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="308" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_LocalhostAndCat_command_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="322" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_LocalhostAndUrlEncodedand_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="335" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_LocalhostAndUrlEncodedUpperSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="348" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel4_LocalhostAndUrlEncodedLowerSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="361" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_NoIp_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="374" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_LocalhostAndSEMICOLON_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="387" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_LocalhostPlusAnd_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="400" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_LocalhostAnd7c_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="414" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_LocalhostAndUrlEncodedand_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="427" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_LocalhostAndUrlEncodedUpperSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="440" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel5_LocalhostAndUrlEncodedLowerSemicolon_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="453" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel6_Localhost_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="466" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel6_NoIp_ExpectNoResponseContent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="478" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevel6_ValidIp_ExpectPingSuccess&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/ssrf/SSRFVulnerabilityTest.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/openRedirect/Http3xxStatusCodeBasedInjectionTest.java">
+<error line="28" column="10" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_Level1&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="43" severity="warning" message="Line is longer than 120 characters (found 131)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="45" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Http_Level2&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="62" severity="warning" message="Line is longer than 120 characters (found 132)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="64" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Https_Level2&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="80" severity="warning" message="Line is longer than 120 characters (found 130)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="81" column="10" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStarts_WWW_Level2&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="98" severity="warning" message="Line is longer than 120 characters (found 158)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="100" severity="warning" message="Line is longer than 120 characters (found 123)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="100" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItDoesNotStartWith_Http_Https_Or_WWW_Level2&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="117" severity="warning" message="Line is longer than 120 characters (found 157)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="119" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItIsSameAs_ApplicationDomain_Level2&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="134" severity="warning" message="Line is longer than 120 characters (found 131)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="136" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Http_Level3&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="152" severity="warning" message="Line is longer than 120 characters (found 132)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="154" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Https_Level3&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="170" severity="warning" message="Line is longer than 120 characters (found 141)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="172" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_DoubleSlashes_Level3&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="188" severity="warning" message="Line is longer than 120 characters (found 130)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="190" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_WWW_Level3&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="206" severity="warning" message="Line is longer than 120 characters (found 162)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="208" severity="warning" message="Line is longer than 120 characters (found 137)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="208" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItDoesNotStartWith_Http_Https_DoubleSlashes_Or_WWW_Level3&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="225" severity="warning" message="Line is longer than 120 characters (found 157)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="227" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItIsSameAs_ApplicationDomain_Level3&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="242" severity="warning" message="Line is longer than 120 characters (found 131)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="244" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Http_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="260" severity="warning" message="Line is longer than 120 characters (found 132)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="262" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Https_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="279" severity="warning" message="Line is longer than 120 characters (found 141)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="281" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_DoubleSlashes_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="298" severity="warning" message="Line is longer than 120 characters (found 130)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="300" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_WWW_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="319" severity="warning" message="Line is longer than 120 characters (found 148)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="321" severity="warning" message="Line is longer than 120 characters (found 122)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="321" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Null_Byte_Character_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="340" severity="warning" message="Line is longer than 120 characters (found 183)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="342" severity="warning" message="Line is longer than 120 characters (found 157)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="342" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItDoesNotStartWith_Http_Https_DoubleSlashes_Null_Byte_Character_Or_WWW_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="359" severity="warning" message="Line is longer than 120 characters (found 157)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="361" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItIsSameAs_ApplicationDomain_Level4&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="376" severity="warning" message="Line is longer than 120 characters (found 132)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="378" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Https_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="394" severity="warning" message="Line is longer than 120 characters (found 131)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="396" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_Http_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="412" severity="warning" message="Line is longer than 120 characters (found 130)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="414" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_WWW_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="430" severity="warning" message="Line is longer than 120 characters (found 129)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="432" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_DoubleSlash_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="451" severity="warning" message="Line is longer than 120 characters (found 146)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="453" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItStartsWith_NullByteCharacter_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="472" severity="warning" message="Line is longer than 120 characters (found 133)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="474" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItIsAn_EmptyString_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="488" severity="warning" message="Line is longer than 120 characters (found 175)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="490" severity="warning" message="Line is longer than 120 characters (found 157)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="490" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItDoesNotStartWith_Http_Https_DoubleSlashes_Null_Byte_Character_Or_WWW_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="507" severity="warning" message="Line is longer than 120 characters (found 157)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="509" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItIsSameAs_ApplicationDomain_Level5&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="524" severity="warning" message="Line is longer than 120 characters (found 138)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="526" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_ByAddingDomainToPrefix_Level6&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="542" severity="warning" message="Line is longer than 120 characters (found 138)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="544" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_ByAddingDomainToPrefix_Level7&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="560" severity="warning" message="Line is longer than 120 characters (found 153)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="562" severity="warning" message="Line is longer than 120 characters (found 123)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="562" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsNotAddedToLocationHeader_WhenItIsNotInTheListOfWhiteListedURLS_Level8&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="578" severity="warning" message="Line is longer than 120 characters (found 153)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="580" column="13" severity="warning" message="Name &apos;test_That_ReturnToQueryParameterValue_IsAddedToLocationHeader_WhenItIsInTheListOfWhiteListedURLS_Level8&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/sqlInjection/ErrorBasedSQLInjectionVulnerabilityTest.java">
+<error line="49" column="10" severity="warning" message="Name &apos;doesCarInformationExistsLevel1_ExpectParamEscaped&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="62" column="10" severity="warning" message="Name &apos;doesCarInformationExistsLevel2_ExpectParamEscaped&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="75" column="10" severity="warning" message="Name &apos;doesCarInformationExistsLevel3_ExpectParamEscaped&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="88" column="10" severity="warning" message="Name &apos;doesCarInformationExistsLevel4_ExpectValidResponse&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="118" column="10" severity="warning" message="Name &apos;doesCarInformationExistsLevel5_ExpectValidResponse&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/sqlInjection/BlindSQLInjectionVulnerabilityTest.java">
+<error line="33" column="17" severity="warning" message="Name &apos;testGetCarInformationLevel1_CarPresent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="63" column="17" severity="warning" message="Name &apos;testGetCarInformationLevel1_CarNotPresent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="95" column="17" severity="warning" message="Name &apos;testGetCarInformationLevel2_CarPresent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="124" column="17" severity="warning" message="Name &apos;testGetCarInformationLevel2_CarNotPresent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="155" column="17" severity="warning" message="Name &apos;testGetCarInformationLevel3_CarPresent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="185" column="17" severity="warning" message="Name &apos;testGetCarInformationLevel3_CarNotPresent&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/sqlInjection/UnionBasedSQLInjectionVulnerabilityTest.java">
+<error line="58" column="10" severity="warning" message="Name &apos;getCarInformationLevel1_ExpectParamInjected&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="72" column="10" severity="warning" message="Name &apos;getCarInformationLevel2_ExpectParamInjected&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="86" column="10" severity="warning" message="Name &apos;getCarInformationLevel3_ExpectParamEscaped&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="100" column="10" severity="warning" message="Name &apos;getCarInformationLevel4_ExpectParamEscaped&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="115" column="10" severity="warning" message="Name &apos;getCarInformationLevel5_ExpectParamEscaped&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/pathTraversal/PathTraversalTest.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/jwt/impl/JWTValidatorTest.java">
+<error line="215" severity="warning" message="Line is longer than 120 characters (found 142)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="258" severity="warning" message="Line is longer than 120 characters (found 121)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/xss/reflected/PersistentXSSInHTMLTagVulnerabilityTest.java">
+<error line="319" column="17" severity="warning" message="Name &apos;testGetVulnerablePayloadLevel2_WithPatternReplacement&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="350" column="17" severity="warning" message="Name &apos;testGetVulnerablePayloadLevel3_WithResponseContentAssertions&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/test/java/org/sasanlabs/service/vulnerability/xss/reflected/XSSInImgTagAttributeTest.java">
+<error line="20" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevelSecure_validPaths&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="32" column="17" severity="warning" message="Name &apos;getVulnerablePayloadLevelSecure_exploitsFromLowerLevels&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/resources/sampleVulnerability/sampleVulnerability/SampleVulnerability.java">
+<error line="10" column="8" severity="warning" message="Unused import - org.springframework.http.ResponseEntity." source="com.puppycrawl.tools.checkstyle.checks.imports.UnusedImportsCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/Application.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/configuration/VulnerableAppProperties.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/configuration/VulnerableAppConfiguration.java">
+<error line="160" column="10" severity="warning" message="Empty statement." source="com.puppycrawl.tools.checkstyle.checks.coding.EmptyStatementCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/controller/VulnerableAppRestController.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/beans/ScannerMetaResponseBean.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/beans/LevelResponseBean.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/beans/AllEndPointsResponseBean.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/beans/AttackVectorResponseBean.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/beans/ScannerResponseBean.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/IEndPointsInformationProvider.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/FrameworkConstants.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/Variant.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/JSONSerializationUtils.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/LevelConstants.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/GenericUtils.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/MessageBundle.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/EnvUtils.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/annotations/ResponseType.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/annotations/VulnerableAppRestController.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/annotations/RequestParameterLocation.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/annotations/AttackVector.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/internal/utility/annotations/VulnerableAppRequestMapping.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/controller/exception/ControllerException.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/controller/exception/ControllerExceptionHandler.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/vulnerability/types/VulnerabilityType.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/vulnerability/utils/Constants.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/impl/EndPointsInformationProvider.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/exception/ServiceApplicationException.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/exception/ExceptionStatusCodeEnum.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/vulnerability/jwt/IJWTValidator.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/vulnerability/jwt/IJWTTokenGenerator.java">
+<error line="23" column="12" severity="warning" message="Name &apos;getJWTToken_RS256&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+<error line="35" column="12" severity="warning" message="Name &apos;getJWTTokenWithJWKHeader_RS256&apos; must match pattern &apos;^[a-z][a-zA-Z0-9]*$&apos;." source="com.puppycrawl.tools.checkstyle.checks.naming.MethodNameCheck"/>
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/vulnerability/jwt/JWTVulnerability.java">
+</file>
+<file name="/Users/chad.parnin/repos/VulnerableApp/src/main/java/org/sasanlabs/service/vulnerability/commandInjection/CommandInjection.java">
+<error line="128" severity="warning" message="Line is longer than 120 characters (found 136)." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+<error line="152" severity="warning" message="Line is longer than 120 characters (found 140)." source="com.puppycrawl.tools.checkstyle.checks

@@ -1,0 +1,57 @@
+# AppSec-Sentinel Default RuboCop Configuration for Ruby
+#
+# Sensible defaults that catch real code quality issues.
+# Based on Ruby community style guide with practical adjustments.
+
+AllCops:
+  TargetRubyVersion: 2.7
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'db/schema.rb'
+    - 'node_modules/**/*'
+    - 'tmp/**/*'
+    - 'bin/**/*'
+
+# Layout Rules
+Layout/LineLength:
+  Max: 120
+  AllowedPatterns: ['(\A|\s)#']
+
+# Metrics
+Metrics/MethodLength:
+  Max: 50
+  CountAsOne: ['array', 'hash', 'heredoc']
+
+Metrics/ClassLength:
+  Max: 300
+  CountAsOne: ['array', 'hash', 'heredoc']
+
+Metrics/BlockLength:
+  Max: 50
+  Exclude:
+    - '**/*_spec.rb'
+    - '**/spec/**/*'
+
+Metrics/CyclomaticComplexity:
+  Max: 15
+
+Metrics/AbcSize:
+  Max: 30
+
+# Style Rules
+Style/Documentation:
+  Enabled: false  # Don't require documentation comments
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/FrozenStringLiteralComment:
+  Enabled: false  # Don't require frozen string literal comments
+
+# Lint Rules
+Lint/UnusedMethodArgument:
+  AllowUnusedKeywordArguments: true
+
+Lint/UnusedBlockArgument:
+  AllowUnusedKeywordArguments: true

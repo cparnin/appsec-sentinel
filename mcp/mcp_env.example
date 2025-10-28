@@ -1,0 +1,26 @@
+# AppSec-Sentinel MCP Server Environment Variables
+# Copy this file to mcp_env and fill in your credentials
+
+# AI Provider Configuration (REQUIRED)
+AI_PROVIDER=aws_bedrock
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_REGION=us-east-2
+AWS_DEFAULT_REGION=us-east-2
+AI_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+INFERENCE_PROFILE_ID=arn:aws:bedrock:us-east-2:YOUR_ACCOUNT_ID:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+
+# GitHub Integration (REQUIRED for auto-remediation)
+GITHUB_TOKEN=ghp_your_github_token_here
+
+# AppSec-Sentinel Installation (auto-detected, but can override)
+APPSEC_PATH=/path/to/appsec-sentinel
+REPO_SEARCH_PATHS=/path/to/repos
+
+# Scanning Configuration (optional)
+APPSEC_SCAN_LEVEL=critical-high
+APPSEC_DEBUG=false
+
+# MCP Timeout Configuration (optional)
+# MCP_SCAN_TIMEOUT=300           # Scan timeout in seconds (default: 300 = 5 minutes)
+# MCP_REMEDIATE_TIMEOUT=600      # Auto-remediation timeout in seconds (default: 600 = 10 minutes)

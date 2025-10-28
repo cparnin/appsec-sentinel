@@ -1,0 +1,43 @@
+# AppSec-Sentinel Default golangci-lint Configuration for Go
+#
+# Sensible defaults that catch real issues without excessive noise.
+# Runs fast linters in parallel for best performance.
+
+run:
+  timeout: 5m
+  tests: false  # Don't lint test files by default
+
+linters:
+  enable:
+    # Fast, essential linters
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet examines Go source code
+    - ineffassign   # Detects ineffectual assignments
+    - staticcheck   # Advanced static analysis
+    - typecheck     # Type checks
+    - unused        # Checks for unused code
+
+    # Code quality
+    - gofmt         # Checks whether code was gofmt-ed
+    - goimports     # Checks missing or unreferenced package imports
+    - misspell      # Finds commonly misspelled English words
+    - unconvert     # Remove unnecessary type conversions
+
+  disable:
+    # Too noisy for default config
+    - lll           # Line length (too strict)
+    - dupl          # Duplicate code (many false positives)
+    - gocyclo       # Cyclomatic complexity (too noisy)
+
+linters-settings:
+  errcheck:
+    check-blank: false  # Allow _ = err
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on test files
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec

@@ -1,0 +1,241 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:540e5821-dc0d-4333-95a4-48e26518fd71",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-10-16T13:36:34-04:00",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "author": "anchore",
+          "name": "syft",
+          "version": "1.24.0"
+        }
+      ]
+    },
+    "component": {
+      "bom-ref": "b856474321115a07",
+      "type": "file",
+      "name": "/Users/chad.parnin/repos/VulnerableApp"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:github/actions/checkout@v4?package-id=f22cddf366512f7f",
+      "type": "library",
+      "name": "actions/checkout",
+      "version": "v4",
+      "cpe": "cpe:2.3:a:actions\\/checkout:actions\\/checkout:v4:*:*:*:*:*:*:*",
+      "purl": "pkg:github/actions/checkout@v4",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "github-actions-usage-cataloger"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "github-action"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "github-actions-use-statement"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/.github/workflows/security-scan.yml"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:github/actions/github-script@v7?package-id=e15c3686554a733c",
+      "type": "library",
+      "name": "actions/github-script",
+      "version": "v7",
+      "cpe": "cpe:2.3:a:actions\\/github-script:actions\\/github-script:v7:*:*:*:*:*:*:*",
+      "purl": "pkg:github/actions/github-script@v7",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "github-actions-usage-cataloger"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "github-action"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "github-actions-use-statement"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:actions\\/github-script:actions\\/github_script:v7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:actions\\/github_script:actions\\/github-script:v7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:actions\\/github_script:actions\\/github_script:v7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:actions\\/github:actions\\/github-script:v7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:actions\\/github:actions\\/github_script:v7:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/.github/workflows/security-scan.yml"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:maven/gradle-wrapper/gradle-wrapper?package-id=e88364ec3fa76d61",
+      "type": "library",
+      "name": "gradle-wrapper",
+      "version": "UNKNOWN",
+      "cpe": "cpe:2.3:a:gradle-wrapper:gradle-wrapper:*:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/gradle-wrapper/gradle-wrapper",
+      "externalReferences": [
+        {
+          "url": "",
+          "hashes": [
+            {
+              "alg": "SHA-1",
+              "content": "2685e1a923d4c79dd549889406c6ffa9e8661744"
+            }
+          ],
+          "type": "build-meta"
+        }
+      ],
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "java-archive-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "java"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "java-archive"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "java-archive"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gradle-wrapper:gradle_wrapper:*:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gradle_wrapper:gradle-wrapper:*:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gradle_wrapper:gradle_wrapper:*:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gradle:gradle-wrapper:*:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:gradle:gradle_wrapper:*:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/gradle/wrapper/gradle-wrapper.jar"
+        },
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/gradle/wrapper/gradle-wrapper.jar"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:github/imaginexconsulting/ix-guard@main?package-id=fa71fbb0d1f19f67",
+      "type": "library",
+      "name": "imaginexconsulting/IX-Guard",
+      "version": "main",
+      "cpe": "cpe:2.3:a:imaginexconsulting\\/IX-Guard:imaginexconsulting\\/IX-Guard:main:*:*:*:*:*:*:*",
+      "purl": "pkg:github/imaginexconsulting/IX-Guard@main",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "github-actions-usage-cataloger"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "github-action"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "github-actions-use-statement"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:imaginexconsulting\\/IX-Guard:imaginexconsulting\\/IX_Guard:main:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:imaginexconsulting\\/IX_Guard:imaginexconsulting\\/IX-Guard:main:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:imaginexconsulting\\/IX_Guard:imaginexconsulting\\/IX_Guard:main:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:imaginexconsulting\\/IX:imaginexconsulting\\/IX-Guard:main:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:imaginexconsulting\\/IX:imaginexconsulting\\/IX_Guard:main:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/.github/workflows/security-scan.yml"
+        }
+      ]
+    },
+    {
+      "bom-ref": "ce9223fb805b3666",
+      "type": "file",
+      "name": "/Users/chad.parnin/repos/VulnerableApp/.github/workflows/security-scan.yml",
+      "hashes": [
+        {
+          "alg": "SHA-1",
+          "content": "b11dd87960a7e6c0d5e2394ee49f9915e03d07e3"
+        },
+        {
+          "alg": "SHA-256",
+          "content": "3ca5a5eaecaae3a8894010326add18d6bbae2e820936b000ddd8a2cb786d9166"
+        }
+      ]
+    },
+    {
+      "bom-ref": "803860b7b0aaa5b6",
+      "type": "file",
+      "name": "/Users/chad.parnin/repos/VulnerableApp/gradle/wrapper/gradle-wrapper.jar",
+      "hashes": [
+        {
+          "alg": "SHA-1",
+          "content": "2685e1a923d4c79dd549889406c6ffa9e8661744"
+        },
+        {
+          "alg": "SHA-256",
+          "content": "e996d452d2645e70c01c11143ca2d3742734a28da2bf61f25c82bdc288c9e637"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,233 @@
+name: 'AppSec-Sentinel'
+description: 'AI-powered security scanner with SAST, secrets detection, dependency scanning, and auto-remediation'
+author: 'AppSec-Sentinel Contributors'
+
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  ai-provider:
+    description: "The AI provider to use ('aws_bedrock', 'openai', or 'claude')"
+    required: false
+    default: 'aws_bedrock'
+  aws-access-key-id:
+    description: 'AWS Access Key ID for AWS Bedrock (recommended for client data security)'
+    required: false
+  aws-secret-access-key:
+    description: 'AWS Secret Access Key for AWS Bedrock'
+    required: false
+  aws-region:
+    description: 'AWS Region for Bedrock service'
+    required: false
+    default: 'us-east-1'
+  inference-profile-id:
+    description: 'AWS Bedrock Inference Profile ID for Claude .5 (e.g., us.anthropic.claude-sonnet-4-5-20250929-v1:0)'
+    required: false
+  # Legacy AI providers (for fallback - AWS Bedrock is recommended)
+  openai-api-key:
+    description: 'OpenAI API key for AI-powered features (legacy)'
+    required: false
+  claude-api-key:
+    description: 'Claude API key for AI-powered features (legacy)'
+    required: false
+  auto-fix:
+    description: 'Enable automatic remediation and PR creation'
+    required: false
+    default: 'true'
+  auto-fix-mode:
+    description: 'Specific auto-fix mode: 1=SAST+secrets, 2=dependencies, 3=both, 4=skip (overrides auto-fix if set)'
+    required: false
+    default: ''
+  fail-on-critical:
+    description: 'Fail the workflow if critical vulnerabilities are found'
+    required: false
+    default: 'false'
+  scan-level:
+    description: 'Scan level: critical-high or all'
+    required: false
+    default: 'critical-high'
+  code-quality:
+    description: 'Enable code quality and maintainability scanning (in addition to security)'
+    required: false
+    default: 'true'
+
+outputs:
+  total-findings:
+    description: 'Total number of security findings'
+  critical-findings:
+    description: 'Number of critical severity findings'
+  high-findings:
+    description: 'Number of high severity findings'
+  secrets-found:
+    description: 'Number of secrets detected'
+  report-path:
+    description: 'Path to the generated security report'
+  sbom-generated:
+    description: 'Whether SBOM was successfully generated (true/false)'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade -r ${{ github.action_path }}/requirements.txt
+
+    - name: Setup Trivy
+      uses: aquasecurity/setup-trivy@v0.2.0
+      with:
+        version: v0.64.1
+        
+    - name: Setup Gitleaks  
+      uses: gacts/gitleaks@v1
+      with:
+        version: latest
+        run: false  # Just install, don't run yet
+        
+    - name: Setup Syft for SBOM generation
+      shell: bash
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        syft version
+        
+    - name: Setup Node.js for dependency fixes
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Setup Go for dependency fixes
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        
+    - name: Setup Java for dependency fixes
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Rust for dependency fixes
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Setup PHP for dependency fixes
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        tools: composer
+        
+    - name: Configure Git for auto-remediation
+      shell: bash
+      run: |
+        git config --global user.email "appsec-bot@appsec-sentinel.org"
+        git config --global user.name "AppSec-Sentinel Bot"
+        
+    - name: Run AppSec-Sentinel Scanner
+      shell: bash
+      env:
+        AI_PROVIDER: ${{ inputs.ai-provider }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+        AWS_REGION: ${{ inputs.aws-region }}
+        INFERENCE_PROFILE_ID: ${{ inputs.inference-profile-id }}
+        # Legacy AI provider credentials (for fallback)
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        CLAUDE_API_KEY: ${{ inputs.claude-api-key }}
+        APPSEC_AUTO_FIX: ${{ inputs.auto-fix }}
+        APPSEC_AUTO_FIX_MODE: ${{ inputs.auto-fix-mode }}
+        APPSEC_SCAN_LEVEL: ${{ inputs.scan-level }}
+        APPSEC_CODE_QUALITY: ${{ inputs.code-quality }}
+        APPSEC_DEBUG: true
+        APPSEC_LOG_LEVEL: DEBUG
+      run: |
+        cd ${{ github.action_path }}/src
+        python main.py
+        
+    - name: Set outputs
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd ${{ github.action_path }}
+
+        semgrep_file="outputs/raw/semgrep.json"
+        gitleaks_file="outputs/raw/gitleaks.json"
+        trivy_file="outputs/raw/trivy-sca.json"
+
+        if [ -f "$semgrep_file" ]; then
+          critical_count=$(jq '[.results[]? | (.extra.severity? // .severity? // "") | ascii_downcase | select(. == "critical")] | length' "$semgrep_file" 2>/dev/null || echo "0")
+          high_count=$(jq '[.results[]? | (.extra.severity? // .severity? // "") | ascii_downcase | select(. == "high" or . == "error")] | length' "$semgrep_file" 2>/dev/null || echo "0")
+          total_sast=$((critical_count + high_count))
+        else
+          critical_count=0
+          high_count=0
+          total_sast=0
+        fi
+
+        if [ -f "$gitleaks_file" ]; then
+          secrets_count=$(jq 'length' "$gitleaks_file" 2>/dev/null || echo "0")
+        else
+          secrets_count=0
+        fi
+
+        if [ -f "$trivy_file" ]; then
+          trivy_count=$(jq '[.Results[]? | .Vulnerabilities[]? | (.Severity // "") | ascii_downcase | select(. == "critical" or . == "high")] | length' "$trivy_file" 2>/dev/null || echo "0")
+        else
+          trivy_count=0
+        fi
+
+        total_findings=$((total_sast + secrets_count + trivy_count))
+
+        {
+          echo "total-findings=$total_findings"
+          echo "critical-findings=$critical_count"
+          echo "high-findings=$high_count"
+          echo "secrets-found=$secrets_count"
+          echo "report-path=${{ github.action_path }}/outputs/"
+          if [ -f "outputs/sbom/sbom.cyclonedx.json" ] || [ -f "outputs/sbom/sbom.spdx.json" ]; then
+            echo "sbom-generated=true"
+          else
+            echo "sbom-generated=false"
+          fi
+        } >> "$GITHUB_OUTPUT"
+        
+    - name: Check security gate
+      shell: bash
+      if: inputs.fail-on-critical == 'true'
+      run: |
+        # Change to action directory where outputs are created
+        cd ${{ github.action_path }}
+        
+        critical_count=0
+        secrets_count=0
+
+        if [ -f "outputs/raw/semgrep.json" ]; then
+          critical_count=$(jq '[.results[]? | (.extra.severity? // .severity? // "") | ascii_downcase | select(. == "critical")] | length' outputs/raw/semgrep.json 2>/dev/null || echo "0")
+          if [ "$critical_count" -gt 0 ]; then
+            echo "❌ $critical_count critical vulnerabilities found!"
+            exit 1
+          fi
+        fi
+
+        if [ -f "outputs/raw/gitleaks.json" ]; then
+          secrets_count=$(jq 'length' outputs/raw/gitleaks.json 2>/dev/null || echo "0")
+          if [ "$secrets_count" -gt 0 ]; then
+            echo "❌ $secrets_count secrets detected!"
+            exit 1
+          fi
+        fi
+        
+        echo "✅ No critical security issues found"
+        
+    - name: Upload Security Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: ${{ github.action_path }}/outputs/
+        retention-days: 30 

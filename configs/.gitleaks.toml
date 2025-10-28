@@ -1,0 +1,131 @@
+title = "AppSec Scanner Secrets Rules"
+
+gitignore = true
+
+[allowlist]
+paths = [
+  '''\.venv/''',
+  '''env/''',
+  '''\.git/''',
+  '''__pycache__/'''
+]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "key", "generic"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''ghp_[A-Za-z0-9]{36,}'''
+tags = ["github", "token", "generic"]
+
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook"
+regex = '''https://hooks\.slack\.com/services/[A-Z0-9]+/[A-Z0-9]+/[A-Za-z0-9]+'''
+tags = ["slack", "webhook", "generic"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN PRIVATE KEY-----[\s\S]+?-----END PRIVATE KEY-----'''
+tags = ["private", "key", "generic"]
+
+[[rules]]
+id = "hardcoded-password"
+description = "Hardcoded Password"
+regex = '''(?i)(password|HARDCODED_PASSWORD)\s*=\s*["'][^"']{6,}["']'''
+tags = ["password", "generic"]
+
+[[rules]]
+id = "generic-secret"
+description = "Generic Secret/Key"
+regex = '''(?i)(secret|api[_-]?key)\s*=\s*["'][^"']{6,}["']'''
+tags = ["secret", "key", "generic"]
+
+[[rules]]
+id = "mysql-password"
+description = "MySQL Password"
+regex = '''(?i)(mysql.*(password|pwd))\s*=\s*["'][^"']{6,}["']'''
+tags = ["mysql", "db", "password"]
+
+[[rules]]
+id = "postgres-password"
+description = "Postgres Password"
+regex = '''(?i)(postgres.*(password|pwd))\s*=\s*["'][^"']{6,}["']'''
+tags = ["postgres", "db", "password"]
+
+[[rules]]
+id = "mongodb-uri"
+description = "MongoDB URI"
+regex = '''mongodb(\+srv)?:\/\/[^:]+:[^@]+@[^\/]+'''
+tags = ["mongodb", "db", "uri"]
+
+[[rules]]
+id = "salesforce-token"
+description = "Salesforce Token"
+regex = '''(?i)(salesforce.*(token|key|secret))\s*=\s*["'][^"']{6,}["']'''
+tags = ["salesforce", "token", "secret"]
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\\-_]{35}'''
+tags = ["google", "api", "key"]
+
+[[rules]]
+id = "gcp-service-account"
+description = "GCP Service Account"
+regex = '''\"type\": \"service_account\"'''
+tags = ["gcp", "service_account", "json"]
+
+[[rules]]
+id = "azure-client-secret"
+description = "Azure Client Secret"
+regex = '''(?i)(azure.*(client|app).*(secret|key))\s*=\s*["'][^"']{6,}["']'''
+tags = ["azure", "client", "secret"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''(?i)(jwt.*secret)\s*=\s*["'][^"']{6,}["']'''
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "stripe-api-key"
+description = "Stripe API Key"
+regex = '''sk_live_[0-9a-zA-Z]{24}'''
+tags = ["stripe", "api", "key"]
+
+[[rules]]
+id = "twilio-api-key"
+description = "Twilio API Key"
+regex = '''SK[0-9a-fA-F]{32}'''
+tags = ["twilio", "api", "key"]
+
+[[rules]]
+id = "sendgrid-api-key"
+description = "SendGrid API Key"
+regex = '''SG\.[A-Za-z0-9_\-]{22}\.[A-Za-z0-9_\-]{43}'''
+tags = ["sendgrid", "api", "key"]
+
+[[rules]]
+id = "pem-private-key"
+description = "PEM Private Key"
+regex = '''-----BEGIN (RSA |DSA |EC |)PRIVATE KEY-----[\s\S]+?-----END (RSA |DSA |EC |)PRIVATE KEY-----'''
+tags = ["pem", "private", "key"]
+
+[[rules]]
+id = "oauth-client-secret"
+description = "OAuth Client Secret"
+regex = '''(?i)(oauth.*client.*secret)\s*=\s*["'][^"']{6,}["']'''
+tags = ["oauth", "client", "secret"]
+
+[[rules]]
+id = "generic-token"
+description = "Generic Token"
+regex = '''(?i)(token|sessionid|auth[_-]?token)\s*=\s*["'][^"']{8,}["']'''
+tags = ["token", "generic"] 

@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.venv/
+env/
+venv/
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+.pytest_cache/
+.coverage
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+
+# Security tool binaries (should be installed separately)
+bin/
+tools/
+
+# Generated reports and outputs (scanner results)
+outputs/
+reports/
+*.log
+*.db
+*.sqlite
+archive/
+scan_output.txt
+
+# Client exports (when testing tool ingestion)
+clients/client_exports/*.json
+clients/client_exports/*.xml
+
+# Environment/config
+.env
+.env.*
+
+# System files
+.DS_Store
+Thumbs.db
+mcp_env

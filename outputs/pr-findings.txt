@@ -1,0 +1,35 @@
+Security Scan Results for vulnerable-node
+==================================================
+
+🛡️ Security Analysis Complete
+
+**Risk Assessment:** 🟡 Medium Risk
+
+**Security Issues (46 total):**
+• 0 critical vulnerabilities requiring immediate attention
+• 1 high-severity issues needing prompt remediation
+• 46 code security issues (SAST)
+• 0 secrets detected in repository
+• 0 vulnerable dependencies identified
+
+**Code Quality Issues (1275 total):**
+• Maintainability, complexity, and best practice violations
+• Always shown regardless of security scan level
+
+**Recommended Actions:**
+1. Prioritize critical vulnerabilities for immediate patching
+2. Review and rotate any exposed secrets
+3. Update vulnerable dependencies to latest secure versions
+4. Implement security code review practices
+
+Detailed Findings:
+1. By not specifying a USER, a program in the container may run as 'root'. This is a security hazard. If an attacker can control a process running as root, they may have control over the container. Ensure that the last USER in a Dockerfile is a USER other than 'root'. (high - semgrep)
+2. A CSRF middleware was not detected in your express application. Ensure you are either using one such as `csurf` or `csrf` (see rule references) and/or you are properly doing CSRF validation in your routes with a token or cookies. (low - semgrep)
+3. Don’t use the default session cookie name Using the default session cookie name can open your app to attacks. The security issue posed is similar to X-Powered-By: a potential attacker can use it to fingerprint the server and target attacks accordingly. (medium - semgrep)
+4. Default session middleware settings: `domain` not set. It indicates the domain of the cookie; use it to compare against the domain of the server in which the URL is being requested. If they match, then check the path attribute next. (medium - semgrep)
+5. Default session middleware settings: `expires` not set. Use it to set expiration date for persistent cookies. (medium - semgrep)
+6. Default session middleware settings: `httpOnly` not set. It ensures the cookie is sent only over HTTP(S), not client JavaScript, helping to protect against cross-site scripting attacks. (medium - semgrep)
+7. Default session middleware settings: `path` not set. It indicates the path of the cookie; use it to compare against the request path. If this and domain match, then send the cookie in the request. (medium - semgrep)
+8. Default session middleware settings: `secure` not set. It ensures the browser only sends the cookie over HTTPS. (medium - semgrep)
+9. A hard-coded credential was detected. It is not recommended to store credentials in source-code, as this risks secrets being leaked and used by either an internal or external malicious adversary. It is recommended to use environment variables to securely provide credentials or retrieve credentials from a secure vault or HSM (Hardware Security Module). (medium - semgrep)
+10. Checks for any usage of http servers instead of https servers. Encourages the usage of https protocol instead of http, which does not have TLS and is therefore unencrypted. Using http can lead to man-in-the-middle attacks in which the attacker is able to read sensitive information. (medium - semgrep)

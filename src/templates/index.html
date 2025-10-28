@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AppSec-Sentinel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #2d3748;
+            line-height: 1.6;
+            padding: 30px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            border-radius: 24px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 
+                0 25px 50px -12px rgba(74, 144, 226, 0.4),
+                0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            color: white;
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .scan-form {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+            padding: 2.5rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.15),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-left: 4px solid #4a90e2;
+            position: relative;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .repo-picker {
+            position: relative;
+        }
+        
+        .picker-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .picker-btn {
+            background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95em;
+            box-shadow: 0 4px 15px rgba(56, 178, 172, 0.3);
+        }
+        
+        .picker-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(56, 178, 172, 0.4);
+        }
+        
+        .common-repos {
+            margin-top: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .repo-list {
+            padding: 0;
+        }
+        
+        .repo-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .repo-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .repo-item:last-child {
+            border-bottom: none;
+        }
+        
+        .repo-icon {
+            font-size: 1.2em;
+        }
+        
+        .repo-info {
+            flex: 1;
+        }
+        
+        .repo-name {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .repo-path {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .scan-button {
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.3em;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+        }
+        
+        .scan-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .scan-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        .progress-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            padding: 12px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 8px;
+            border-left: 4px solid #e2e8f0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+        }
+        
+        .progress-item.running {
+            background: rgba(255,255,255,0.9);
+            border-left-color: #4a90e2;
+            animation: progressPulse 2s infinite;
+            box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
+        }
+        
+        .progress-item.completed {
+            background: rgba(255,255,255,0.9);
+            border-left-color: #38b2ac;
+            box-shadow: 0 6px 16px rgba(56, 178, 172, 0.4);
+        }
+        
+        .progress-item.error {
+            background: rgba(255,255,255,0.9);
+            border-left-color: #ff6b6b;
+            box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+        }
+        
+        .progress-icon {
+            font-size: 1.2em;
+            margin-right: 12px;
+            min-width: 24px;
+            text-align: center;
+        }
+        
+        .progress-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .progress-label {
+            font-weight: 700;
+            color: #1a202c;
+            font-size: 0.95em;
+        }
+        
+        .progress-status {
+            font-size: 0.85em;
+            color: #2d3748;
+            font-style: italic;
+            font-weight: 600;
+        }
+        
+        .progress-item.running .progress-label {
+            color: #1e3a8a;
+        }
+        
+        .progress-item.running .progress-status {
+            color: #3b82f6;
+        }
+        
+        .progress-item.completed .progress-label {
+            color: #134e4a;
+        }
+        
+        .progress-item.completed .progress-status {
+            color: #059669;
+        }
+        
+        .progress-item.error .progress-label {
+            color: #991b1b;
+        }
+        
+        .progress-item.error .progress-status {
+            color: #dc2626;
+        }
+        
+        .progress-indicator {
+            font-size: 1.1em;
+            margin-left: 12px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .progress-indicator.completed {
+            animation: none;
+        }
+        
+        @keyframes progressPulse {
+            0%, 100% { 
+                background: rgba(255,255,255,0.9);
+                box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
+            }
+            50% { 
+                background: rgba(239, 246, 255, 0.95);
+                box-shadow: 0 8px 20px rgba(74, 144, 226, 0.5);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+            margin-top: 2rem;
+        }
+        
+        .results-header {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #4a90e2;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .results-header h2 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        .results-header p {
+            color: #5a6c7d;
+            margin: 0;
+        }
+        
+        .results-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #667eea;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .summary-card.critical {
+            border-top-color: #ff6b6b;
+            background: linear-gradient(135deg, rgba(255, 235, 238, 0.9) 0%, rgba(255, 245, 245, 0.8) 100%);
+        }
+        
+        .summary-card.high {
+            border-top-color: #ffa726;
+            background: linear-gradient(135deg, rgba(255, 243, 224, 0.9) 0%, rgba(255, 248, 235, 0.8) 100%);
+        }
+        
+        .summary-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .summary-card p {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        
+        .download-section {
+            margin-top: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .download-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .download-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #38b2ac 0%, #319795 100%);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 10px 15px -3px rgba(56, 178, 172, 0.4);
+            display: block;
+        }
+        
+        .download-btn:hover {
+            background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(40, 167, 69, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .error {
+            background: rgba(248, 215, 218, 0.95);
+            backdrop-filter: blur(10px);
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            border: 1px solid rgba(245, 198, 203, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .loading.show {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .picker-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .download-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .scan-button {
+                font-size: 1.1em;
+                padding: 16px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 AppSec-Sentinel</h1>
+            <div class="subtitle">AI-powered security & code quality scanning with intelligent auto-remediation</div>
+        </div>
+        
+        <div class="scan-form">
+            <h2 style="margin-bottom: 1.5rem; color: #2d3748; font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: #4a90e2;">⚙️</span> Security Scan Configuration
+            </h2>
+                
+                <form id="scanForm">
+                    <div class="form-group">
+                        <label for="repoPath">Repository to Scan</label>
+                        <div class="repo-info">
+                            <div class="current-repo">
+                                📁 Current Directory: <span id="currentRepoPath">{{ repo_display_name or repo_path or 'Not detected' }}</span>
+                            </div>
+                            <input 
+                                type="hidden" 
+                                id="repoPath" 
+                                name="repoPath" 
+                                value="{{ repo_path or '' }}"
+                                required
+                            >
+                        </div>
+                        <small style="color: #666; font-size: 0.9em;" id="repoHelperText">AppSec-Sentinel will scan the selected directory.</small>
+                        <div class="picker-buttons" style="margin-top: 12px;">
+                            <button type="button" class="picker-btn" onclick="showCommonRepos()">Browse Common Locations</button>
+                            <button type="button" class="picker-btn" onclick="promptForRepo()">Enter Path Manually</button>
+                        </div>
+                        <div id="commonRepos" class="common-repos" style="display:none; margin-top: 12px;">
+                            <div id="repoList" class="repo-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="scanLevel">Scan Level</label>
+                            <select id="scanLevel" name="scanLevel">
+                                <option value="critical-high">Critical & High (Recommended)</option>
+                                <option value="all">All Severity Levels</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="autoFix">Auto-Remediation</label>
+                            <select id="autoFix" name="autoFix">
+                                <option value="false">Scan Only</option>
+                                <option value="1">Auto-fix Code Issues (SAST)</option>
+                                <option value="2">Auto-fix Dependencies Only</option>
+                                <option value="3">Auto-fix Both (Recommended)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tools to Run</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; transition: all 0.3s;" onmouseover="this.style.borderColor='#4a90e2'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <input type="checkbox" name="tool_semgrep" value="semgrep" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500;">🔍 Semgrep (SAST)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; transition: all 0.3s;" onmouseover="this.style.borderColor='#4a90e2'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <input type="checkbox" name="tool_trivy" value="trivy" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500;">📦 Trivy (Dependencies)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; transition: all 0.3s;" onmouseover="this.style.borderColor='#4a90e2'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <input type="checkbox" name="tool_gitleaks" value="gitleaks" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500;">🔑 Gitleaks (Secrets)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; transition: all 0.3s;" onmouseover="this.style.borderColor='#4a90e2'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <input type="checkbox" name="tool_code_quality" value="code_quality" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500;">📐 Code Quality Linters</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; transition: all 0.3s;" onmouseover="this.style.borderColor='#4a90e2'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <input type="checkbox" name="tool_sbom" value="sbom" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500;">📋 SBOM Generation</span>
+                            </label>
+                        </div>
+                        <small style="color: #666; font-size: 0.9em; display: block; margin-top: 8px;">Select which tools to include in the scan</small>
+                    </div>
+
+                    <button type="submit" class="scan-button" id="scanButton">
+                        🔍 Start Security Scan
+                    </button>
+                </form>
+        </div>
+        
+        <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">Running security scan... This may take a few minutes.</p>
+                <div id="progressDetails" style="font-size: 0.9em; color: #666; margin-top: 15px;">
+                    <div id="scannerProgress">
+                        <div class="progress-item" id="semgrepProgress">
+                            <div class="progress-icon">🔍</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Semgrep (SAST)</div>
+                                <div class="progress-status" id="semgrepStatus">Initializing...</div>
+                            </div>
+                            <div class="progress-indicator" id="semgrepIndicator">⏳</div>
+                        </div>
+                        <div class="progress-item" id="gitleaksProgress">
+                            <div class="progress-icon">🔑</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Gitleaks (Secrets)</div>
+                                <div class="progress-status" id="gitleaksStatus">Waiting...</div>
+                            </div>
+                            <div class="progress-indicator" id="gitleaksIndicator">⏸️</div>
+                        </div>
+                        <div class="progress-item" id="trivyProgress">
+                            <div class="progress-icon">📦</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Trivy (Dependencies)</div>
+                                <div class="progress-status" id="trivyStatus">Waiting...</div>
+                            </div>
+                            <div class="progress-indicator" id="trivyIndicator">⏸️</div>
+                        </div>
+                    </div>
+                    <div id="codeQualityContainer" style="margin-top: 15px; display: none;">
+                        <div class="progress-item" id="codeQualityProgress">
+                            <div class="progress-icon">📐</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Code Quality Scanning</div>
+                                <div class="progress-status" id="codeQualityStatus">Detecting languages and running appropriate linters...</div>
+                            </div>
+                            <div class="progress-indicator" id="codeQualityIndicator">⏸️</div>
+                        </div>
+                    </div>
+                    <div id="additionalProgress" style="margin-top: 15px; display: none;">
+                        <div class="progress-item" id="enhancementProgress">
+                            <div class="progress-icon">🧠</div>
+                            <div class="progress-content">
+                                <div class="progress-label">AI Enhancement</div>
+                                <div class="progress-status" id="enhancementStatus">Waiting...</div>
+                            </div>
+                            <div class="progress-indicator" id="enhancementIndicator">⏸️</div>
+                        </div>
+                        <div class="progress-item" id="reportProgress">
+                            <div class="progress-icon">📊</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Report Generation</div>
+                                <div class="progress-status" id="reportStatus">Waiting...</div>
+                            </div>
+                            <div class="progress-indicator" id="reportIndicator">⏸️</div>
+                        </div>
+                        <div class="progress-item" id="remediationProgress" style="display: none;">
+                            <div class="progress-icon">🔧</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Auto-remediation</div>
+                                <div class="progress-status" id="remediationStatus">Waiting...</div>
+                            </div>
+                            <div class="progress-indicator" id="remediationIndicator">⏸️</div>
+                        </div>
+                    </div>
+                    <div id="progressSummary" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.95); border-radius: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); backdrop-filter: blur(10px);">
+                        <div style="font-weight: 700; margin-bottom: 5px; color: #1a202c;">Scan Progress</div>
+                        <div id="overallStatus" style="color: #2d3748; font-weight: 600;">Starting scan...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error" class="error" style="display: none;"></div>
+            
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2>🎯 Scan Results</h2>
+                <p id="scanInfo"></p>
+            </div>
+            
+            <div class="results-summary" id="summary"></div>
+            
+            <div class="download-section">
+                <h3>📊 Download Reports</h3>
+                <div class="download-buttons">
+                    <a href="/report" target="_blank" class="download-btn">📄 HTML Report</a>
+                    <a href="/reports/sbom.cyclonedx.json" class="download-btn">📋 SBOM (CycloneDX)</a>
+                    <a href="/reports/sbom.spdx.json" class="download-btn">📋 SBOM (SPDX)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Repository picker functionality
+        async function setCurrentDirectory() {
+            const repoInput = document.getElementById('repoPath');
+            const repoLabel = document.getElementById('currentRepoPath');
+            const helper = document.getElementById('repoHelperText');
+            const commonRepos = document.getElementById('commonRepos');
+
+            try {
+                const response = await fetch('/current-directory');
+                const data = await response.json();
+
+                if (repoInput) {
+                    repoInput.value = data.path || '';
+                }
+                if (repoLabel) {
+                    repoLabel.textContent = data.display_name || data.path || 'Not detected';
+                }
+                if (helper) {
+                    if (data.path === '/app/scan' || data.display_name === '/app/scan') {
+                        helper.textContent = 'AppSec-Sentinel detected the default Docker mount at /app/scan.';
+                    } else {
+                        helper.textContent = 'AppSec-Sentinel will scan the selected directory.';
+                    }
+                }
+                if (commonRepos) {
+                    commonRepos.style.display = 'none';
+                }
+            } catch (error) {
+                if (repoInput) {
+                    repoInput.value = '';
+                }
+                if (repoLabel) {
+                    repoLabel.textContent = 'Not detected';
+                }
+                if (helper) {
+                    helper.textContent = 'Enter a repository path or browse common locations.';
+                }
+            }
+        }
+        
+        // Auto-load repository info on page load
+        document.addEventListener('DOMContentLoaded', setCurrentDirectory);
+        
+        async function showCommonRepos() {
+            const commonRepos = document.getElementById('commonRepos');
+            const repoList = document.getElementById('repoList');
+            
+            // Show loading
+            repoList.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">🔍 Searching for repositories...</div>';
+            commonRepos.style.display = 'block';
+            
+            try {
+                const response = await fetch('/discover-repos');
+                const data = await response.json();
+                
+                if (data.repositories && data.repositories.length > 0) {
+                    repoList.innerHTML = data.repositories.map(repo => `
+                        <div class="repo-item" onclick="selectRepo('${repo.path}')">
+                            <div class="repo-icon">${repo.type === 'git' ? '🗂️' : '📁'}</div>
+                            <div class="repo-info">
+                                <div class="repo-name">${repo.name}</div>
+                                <div class="repo-path">${repo.path}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    repoList.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">No repositories found in common locations</div>';
+                }
+            } catch (error) {
+                repoList.innerHTML = `
+                    <div class="repo-item" onclick="selectRepo('/Users/${getUserName()}/repos')">
+                        <div class="repo-icon">📁</div>
+                        <div class="repo-info">
+                            <div class="repo-name">repos</div>
+                            <div class="repo-path">/Users/${getUserName()}/repos</div>
+                        </div>
+                    </div>
+                    <div class="repo-item" onclick="selectRepo('/Users/${getUserName()}/Documents')">
+                        <div class="repo-icon">📁</div>
+                        <div class="repo-info">
+                            <div class="repo-name">Documents</div>
+                            <div class="repo-path">/Users/${getUserName()}/Documents</div>
+                        </div>
+                    </div>
+                    <div class="repo-item" onclick="selectRepo('/Users/${getUserName()}/Desktop')">
+                        <div class="repo-icon">📁</div>
+                        <div class="repo-info">
+                            <div class="repo-name">Desktop</div>
+                            <div class="repo-path">/Users/${getUserName()}/Desktop</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function promptForRepo() {
+            const repoInput = document.getElementById('repoPath');
+            const repoLabel = document.getElementById('currentRepoPath');
+            const helper = document.getElementById('repoHelperText');
+            const value = prompt('Enter repository path to scan:');
+            if (!value) {
+                return;
+            }
+            if (repoInput) {
+                repoInput.value = value;
+            }
+            if (repoLabel) {
+                repoLabel.textContent = value;
+            }
+            if (helper) {
+                helper.textContent = 'AppSec-Sentinel will scan the selected directory.';
+            }
+        }
+        
+        function selectRepo(path) {
+            const repoInput = document.getElementById('repoPath');
+            const repoLabel = document.getElementById('currentRepoPath');
+            const helper = document.getElementById('repoHelperText');
+            const commonRepos = document.getElementById('commonRepos');
+
+            if (repoInput) {
+                repoInput.value = path;
+            }
+            if (repoLabel) {
+                repoLabel.textContent = path;
+            }
+            if (helper) {
+                if (path === '/app/scan') {
+                    helper.textContent = 'AppSec-Sentinel detected the default Docker mount at /app/scan.';
+                } else {
+                    helper.textContent = 'AppSec-Sentinel will scan the selected directory.';
+                }
+            }
+            if (commonRepos) {
+                commonRepos.style.display = 'none';
+            }
+        }
+        
+        function getUserName() {
+            return 'username'; // Fallback
+        }
+        
+        // Progress management
+        let progressManager = {
+            phases: [
+                { id: 'semgrep', name: 'Semgrep', duration: 15000, messages: ['Initializing...', 'Analyzing code patterns...', 'Scanning for vulnerabilities...', 'Processing results...'] },
+                { id: 'gitleaks', name: 'Gitleaks', duration: 8000, messages: ['Starting secret scan...', 'Analyzing git history...', 'Detecting exposed credentials...', 'Finalizing scan...'] },
+                { id: 'trivy', name: 'Trivy', duration: 12000, messages: ['Initializing dependency scan...', 'Downloading vulnerability database...', 'Scanning dependencies...', 'Generating findings...'] },
+                { id: 'codeQuality', name: 'Code Quality', duration: 10000, messages: ['Detecting project languages...', 'Running language-specific linters...', 'Analyzing code quality...', 'Processing code quality findings...'] },
+                { id: 'enhancement', name: 'AI Enhancement', duration: 5000, messages: ['Starting AI analysis...', 'Enhancing findings with context...', 'Applying intelligence...'] },
+                { id: 'report', name: 'Report Generation', duration: 3000, messages: ['Generating HTML report...', 'Creating summary...', 'Finalizing report...'] }
+            ],
+            currentPhase: 0,
+
+            start: function() {
+                document.getElementById('progressSummary').style.display = 'block';
+                document.getElementById('codeQualityContainer').style.display = 'block';
+                document.getElementById('additionalProgress').style.display = 'block';
+                this.runPhase(0);
+            },
+            
+            runPhase: function(phaseIndex) {
+                if (phaseIndex >= this.phases.length) {
+                    this.complete();
+                    return;
+                }
+                
+                const phase = this.phases[phaseIndex];
+                const progressItem = document.getElementById(phase.id + 'Progress');
+                const statusElement = document.getElementById(phase.id + 'Status');
+                const indicatorElement = document.getElementById(phase.id + 'Indicator');
+                
+                // Mark as running
+                progressItem.classList.add('running');
+                indicatorElement.textContent = '⏳';
+                indicatorElement.classList.remove('completed');
+                
+                // Update overall status
+                document.getElementById('overallStatus').textContent = `Running ${phase.name} scan...`;
+                
+                // Cycle through messages
+                let messageIndex = 0;
+                const messageInterval = setInterval(() => {
+                    if (messageIndex < phase.messages.length) {
+                        statusElement.textContent = phase.messages[messageIndex];
+                        messageIndex++;
+                    }
+                }, phase.duration / phase.messages.length);
+                
+                // Complete this phase and move to next
+                setTimeout(() => {
+                    clearInterval(messageInterval);
+                    progressItem.classList.remove('running');
+                    progressItem.classList.add('completed');
+                    statusElement.textContent = 'Completed ✓';
+                    indicatorElement.textContent = '✅';
+                    indicatorElement.classList.add('completed');
+                    
+                    // Show remediation phase if auto-fix is enabled
+                    if (phaseIndex === 3) { // After code quality scanning (codeQuality is index 3)
+                        const autoFix = document.getElementById('autoFix').value !== 'false';
+                        if (autoFix) {
+                            document.getElementById('remediationProgress').style.display = 'flex';
+                            this.phases.splice(4, 0, {
+                                id: 'remediation',
+                                name: 'Auto-remediation',
+                                duration: 10000,
+                                messages: ['Analyzing fixable issues...', 'Applying code fixes...', 'Updating dependencies...', 'Validating changes...']
+                            });
+                        }
+                    }
+                    
+                    this.runPhase(phaseIndex + 1);
+                }, phase.duration);
+            },
+            
+            complete: function() {
+                document.getElementById('overallStatus').innerHTML = '<span style="color: #38b2ac; font-weight: 600;">✅ Scan completed successfully!</span>';
+            },
+            
+            error: function(phase, message) {
+                const progressItem = document.getElementById(phase + 'Progress');
+                const statusElement = document.getElementById(phase + 'Status');
+                const indicatorElement = document.getElementById(phase + 'Indicator');
+                
+                progressItem.classList.remove('running');
+                progressItem.classList.add('error');
+                statusElement.textContent = message || 'Error occurred';
+                indicatorElement.textContent = '❌';
+                indicatorElement.classList.add('completed');
+                
+                document.getElementById('overallStatus').innerHTML = '<span style="color: #ff6b6b; font-weight: 600;">⚠️ Scan encountered issues</span>';
+            }
+        };
+        
+        document.getElementById('scanForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+
+            // Collect selected tools
+            const selectedTools = [];
+            if (formData.get('tool_semgrep')) selectedTools.push('semgrep');
+            if (formData.get('tool_trivy')) selectedTools.push('trivy');
+            if (formData.get('tool_gitleaks')) selectedTools.push('gitleaks');
+            if (formData.get('tool_code_quality')) selectedTools.push('code_quality');
+            if (formData.get('tool_sbom')) selectedTools.push('sbom');
+
+            const scanData = {
+                repo_path: formData.get('repoPath'),
+                scan_level: formData.get('scanLevel'),
+                auto_fix: formData.get('autoFix') !== 'false',
+                auto_fix_mode: formData.get('autoFix'),
+                selected_tools: selectedTools
+            };
+            
+            // Show loading state
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('scanButton').disabled = true;
+            document.getElementById('scanButton').textContent = '⏳ Scanning...';
+            
+            // Start progress simulation
+            progressManager.start();
+            
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scanData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Scan failed');
+                }
+                
+                displayResults(result);
+                
+            } catch (error) {
+                document.getElementById('error').textContent = 'Error: ' + error.message;
+                document.getElementById('error').style.display = 'block';
+                progressManager.error('overall', error.message);
+            } finally {
+                // Hide loading state
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('scanButton').disabled = false;
+                document.getElementById('scanButton').textContent = '🔍 Start Security Scan';
+            }
+        });
+        
+        function displayResults(result) {
+            const summary = result.scan_summary;
+            const findings = result.findings || [];
+            
+            // Update scan info
+            document.getElementById('scanInfo').textContent = 
+                `Scanned: ${summary.repository_path} • Level: ${summary.scan_level} • Auto-fix: ${summary.auto_fix_enabled ? 'Enabled' : 'Disabled'}`;
+            
+            // Update summary cards
+            const summaryHtml = `
+                <div class="summary-card">
+                    <h3>${summary.total_findings}</h3>
+                    <p>Total Findings</p>
+                </div>
+                <div class="summary-card critical">
+                    <h3>${summary.critical_findings}</h3>
+                    <p>Critical</p>
+                </div>
+                <div class="summary-card high">
+                    <h3>${summary.high_findings}</h3>
+                    <p>High</p>
+                </div>
+                <div class="summary-card">
+                    <h3>${summary.auto_fix_enabled ? 'Yes' : 'No'}</h3>
+                    <p>Auto-fix Applied</p>
+                </div>
+            `;
+            document.getElementById('summary').innerHTML = summaryHtml;
+            
+            // Findings details removed - users can view the comprehensive HTML report
+            
+            // Update download links with cache-busting timestamp
+            const timestamp = Date.now();
+            const downloadLinks = document.querySelectorAll('.download-btn');
+            downloadLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href.includes('?')) {
+                    link.setAttribute('href', href.split('?')[0] + `?v=${timestamp}`);
+                } else {
+                    link.setAttribute('href', href + `?v=${timestamp}`);
+                }
+            });
+            
+            // Show results
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
