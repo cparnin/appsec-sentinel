@@ -107,8 +107,10 @@ Turn Claude Desktop into a conversational security expert - scan, analyze, and a
     "appsec-sentinel": {
       "command": "/path/to/appsec-sentinel/.venv/bin/python",
       "args": ["/path/to/appsec-sentinel/mcp/appsec_mcp_server.py"],
+      "cwd": "/path/to/appsec-sentinel",
       "env": {
-        "PATH": "/usr/local/bin:/usr/bin:/bin"
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin",
+        "PYTHONPATH": "/path/to/appsec-sentinel/src"
       }
     }
   }
@@ -117,7 +119,10 @@ Turn Claude Desktop into a conversational security expert - scan, analyze, and a
 
 > 💡 Credentials in `mcp/mcp_env` - no secrets in config! Install gitleaks/trivy first.
 
-**7 Tools:** `scan_repository` • `cross_file_analysis` • `auto_remediate` • `generate_sbom` • `assess_business_impact` • `get_report` • `get_scan_findings`
+**14 MCP Tools Available:**
+- **Core:** `scan_repository` • `auto_remediate` • `get_report` • `view_report_html` • `health_check`
+- **Analysis:** `cross_file_analysis` • `assess_business_impact` • `generate_sbom`
+- **API Tools:** `get_scan_findings` • `get_semgrep_findings` • `get_trivy_findings` • `get_gitleaks_findings` • `get_code_quality_findings` • `get_sbom_data`
 
 **Usage:** "Scan nodejs-goof for vulnerabilities" → detailed findings with file paths, line numbers, remediation
 

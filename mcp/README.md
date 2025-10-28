@@ -53,8 +53,10 @@ cp mcp_env.example mcp_env
     "appsec-sentinel": {
       "command": "/path/to/AppSec-Sentinel/.venv/bin/python",
       "args": ["/path/to/AppSec-Sentinel/mcp/appsec_mcp_server.py"],
+      "cwd": "/path/to/AppSec-Sentinel",
       "env": {
-        "PATH": "/usr/local/bin:/usr/bin:/bin"
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin",
+        "PYTHONPATH": "/path/to/AppSec-Sentinel/src"
       }
     }
   }
@@ -65,7 +67,7 @@ cp mcp_env.example mcp_env
 
 ### 4. Restart Claude Desktop
 
-Quit completely and reopen. Click 🔨 (hammer) icon to verify 6 AppSec-Sentinel tools appear.
+Quit completely and reopen. Click 🔨 (hammer) icon to verify 14 AppSec-Sentinel tools appear.
 
 ## Usage Examples
 
@@ -81,17 +83,33 @@ Generate SBOM for my-project
 Assess business impact for vulnerabilities in WebGoat
 ```
 
-## Available Tools
+## Available Tools (14 Total)
 
+### Core Tools
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
 | `scan_repository` | Full security scan | Repo name/path | Vulnerability counts, risk summary |
-| `get_scan_findings` | Paginated findings | Repo name, filters | File paths, line numbers, remediation |
-| `cross_file_analysis` | Attack chain detection | Repo name | Cross-file vulnerabilities, tech stack |
 | `auto_remediate` | AI-powered fixes | Repo name | PR URLs for fixes |
-| `generate_sbom` | Software BOM | Repo name | CycloneDX & SPDX summaries |
-| `assess_business_impact` | Risk assessment | Repo name | Risk level, recommendations |
 | `get_report` | Detailed report | Repo name | Full vulnerability breakdown |
+| `view_report_html` | Open HTML report | Repo name | Opens browser with visual report |
+| `health_check` | System diagnostics | None | Scanner availability, config status |
+
+### Analysis Tools
+| Tool | Purpose | Input | Output |
+|------|---------|-------|--------|
+| `cross_file_analysis` | Attack chain detection | Repo name | Cross-file vulnerabilities, tech stack |
+| `assess_business_impact` | Risk assessment | Repo name | Risk level, recommendations |
+| `generate_sbom` | Software BOM | Repo name | CycloneDX & SPDX summaries |
+
+### API Tools (for IXaidev/Agents)
+| Tool | Purpose | Input | Output |
+|------|---------|-------|--------|
+| `get_scan_findings` | All findings paginated | Repo, filters, page | Combined results from all scanners |
+| `get_semgrep_findings` | SAST findings only | Repo, severity, page | Pure JSON Semgrep results |
+| `get_trivy_findings` | Dependency vulns only | Repo, severity, page | Pure JSON Trivy results |
+| `get_gitleaks_findings` | Secrets only | Repo, page | Pure JSON Gitleaks results |
+| `get_code_quality_findings` | Linter results only | Repo, linter, page | Pure JSON code quality results |
+| `get_sbom_data` | SBOM data | Repo, format | Pure JSON SBOM data |
 
 ## Smart Repository Discovery
 
