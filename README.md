@@ -59,8 +59,6 @@ cp env.example .env
 - 📊 Visual reports with executive summaries
 - 📥 Download SBOM files (CycloneDX & SPDX)
 
-<img src="https://github.com/user-attachments/assets/2fb72868-25fb-4ea2-ad36-cc9cc156e0e5" width="1171" height="771" style="border:2px solid #ccc; border-radius:8px;" />
-
 ### CLI Mode
 
 ```bash
@@ -72,8 +70,6 @@ cp env.example .env
 - 🔧 Choose which tools to run (SAST, secrets, dependencies, code quality, SBOM)
 - 🎯 Select scan level (critical-high or all)
 - 🤖 Configure auto-remediation mode
-
-<img src="https://github.com/user-attachments/assets/fd81da35-6fb8-49ef-96c6-0c845321c2ac" width="674" height="239" style="border:2px solid #ccc; border-radius:8px;" />
 
 ### CI/CD Integration
 ```bash
@@ -89,7 +85,6 @@ git add .github/workflows/security-scan.yml
 git commit -m "Add AppSec-Sentinel security scanning"
 git push
 ```
-<img src="https://github.com/user-attachments/assets/873d9f10-ba19-4cb9-b36e-033e18444453" width="1298" height="231" style="border:2px solid #ccc; border-radius:8px;" />
 
 ## How It Works
 
@@ -128,19 +123,11 @@ Turn Claude Desktop into a conversational security expert - scan, analyze, and a
 
 [Full MCP setup guide →](mcp/README.md)
 
-<img width="645" height="615" alt="Screenshot 2025-10-09 at 12 00 03 PM" src="https://github.com/user-attachments/assets/fbbc6c2e-8d99-47c8-a115-0ecc9fc2b2d2" />
-
-<img width="781" height="350" alt="Screenshot 2025-10-09 at 12 02 28 PM" src="https://github.com/user-attachments/assets/0c306f32-d00f-48d2-8a86-7dd93a9ab2a3" />
-
 ## Auto-Fix Modes
 - **Mode 1**: SAST + secrets (1 PR)
 - **Mode 2**: Dependencies only (1 PR)
 - **Mode 3**: Both (2 separate PRs) ⭐ Recommended
 - **Mode 4**: Scan only (no PRs)
-
-<img src="https://github.com/user-attachments/assets/dee9ec90-9ce0-4167-bc13-58de9f41cce2" width="627" height="240" style="border:2px solid #ccc; border-radius:8px;" />
-
-<img src="https://github.com/user-attachments/assets/814b9e7c-dfc0-45ae-9bb7-5b033c7af06e" width="956" height="239" style="border:2px solid #ccc; border-radius:8px;" />
 
 ## Cross-File Analysis
 
@@ -150,7 +137,6 @@ Traces attack paths across multiple files and languages:
 - **Data Flow Tracing** - Entry points → attack paths → sensitive sinks
 - **Framework-Aware** - Express, Spring, Django, Rails, Laravel, ASP.NET
 
-<img width="1167" height="691" alt="Cross-file analysis example" src="https://github.com/user-attachments/assets/70627216-1907-4c1e-979a-af225dfdd5a8" />
 
 ## Architecture
 
