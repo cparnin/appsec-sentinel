@@ -84,7 +84,7 @@ jobs:
             }
             
             comment += `📊 [View detailed reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n`;
-            comment += '*Powered by Imagine X AppSec AI Scanner*';
+            comment += '*Powered by AppSec-Sentinel*';
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
