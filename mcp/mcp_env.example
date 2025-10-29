@@ -2,13 +2,26 @@
 # Copy this file to mcp_env and fill in your credentials
 
 # AI Provider Configuration (REQUIRED)
-AI_PROVIDER=aws_bedrock
-AWS_ACCESS_KEY_ID=your_aws_access_key_id
-AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
-AWS_REGION=us-east-2
-AWS_DEFAULT_REGION=us-east-2
-AI_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
-INFERENCE_PROFILE_ID=arn:aws:bedrock:us-east-2:YOUR_ACCOUNT_ID:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+# Choose one provider and uncomment its settings
+
+# OpenAI (RECOMMENDED)
+AI_PROVIDER=openai
+OPENAI_API_KEY=sk-your-openai-api-key-here
+AI_MODEL=gpt-5-mini
+
+# Anthropic/Claude (Alternative)
+#AI_PROVIDER=claude
+#CLAUDE_API_KEY=your-claude-api-key-here
+#AI_MODEL=claude-sonnet-4-20250514
+
+# AWS Bedrock (Alternative)
+#AI_PROVIDER=aws_bedrock
+#AWS_ACCESS_KEY_ID=your_aws_access_key_id
+#AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+#AWS_REGION=us-east-2
+#AWS_DEFAULT_REGION=us-east-2
+#AI_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+#INFERENCE_PROFILE_ID=arn:aws:bedrock:us-east-2:YOUR_ACCOUNT_ID:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0
 
 # GitHub Integration (REQUIRED for auto-remediation)
 GITHUB_TOKEN=ghp_your_github_token_here
