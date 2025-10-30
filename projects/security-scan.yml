@@ -1,7 +1,7 @@
 name: Security Scan
 
 # Copy this file to: .github/workflows/security-scan.yml
-# Drop-in workflow for client repositories - no customization needed
+# Drop-in workflow for project repositories - no customization needed
 # Requires AWS secrets for Bedrock (recommended) or OpenAI API key (legacy):
 #   - AWS_ACCESS_KEY_ID
 #   - AWS_SECRET_ACCESS_KEY

@@ -6,7 +6,7 @@ Main components:
 - ai/: AI-powered remediation suggestions
 - reporting/: Report generation and templates
 
-Perfect for security team client demos and security automation.
+Perfect for security team demos and security automation.
 """
 
 __version__ = "1.0.0" 

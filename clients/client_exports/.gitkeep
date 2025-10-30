@@ -1,2 +1,0 @@
-# This file ensures the client_exports directory is tracked in git
-# Actual JSON exports are gitignored for security

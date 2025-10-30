@@ -42,9 +42,9 @@ reports/
 archive/
 scan_output.txt
 
-# Client exports (when testing tool ingestion)
-clients/client_exports/*.json
-clients/client_exports/*.xml
+# Project exports (when testing tool ingestion)
+projects/project_exports/*.json
+projects/project_exports/*.xml
 
 # Environment/config
 .env

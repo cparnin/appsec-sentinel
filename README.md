@@ -7,7 +7,7 @@ AI-powered security scanner with **cross-file vulnerability analysis** and **aut
 ## Features
 
 - **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters
-- **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no client setup needed)
+- **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no project setup needed)
 - **Zero Configuration Required** - Works on any repo out-of-the-box with sensible defaults
 - **Auto-Remediation** - Creates GitHub PRs with AI-generated code fixes (deterministic by default)
 - **Cross-File Analysis** - Traces attack chains across multiple files and languages
@@ -73,7 +73,7 @@ cp env.example .env
 ### CI/CD Integration
 ```bash
 # Copy workflow template
-cp clients/security-scan.yml .github/workflows/
+cp projects/security-scan.yml .github/workflows/
 
 # Add GitHub secret:
 #   - OPENAI_API_KEY (or CLAUDE_API_KEY, or AWS credentials)
@@ -240,7 +240,7 @@ APPSEC_AUTO_FIX=true
 APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 ```
 
-**Bundled Configs** (client repos don't need these):
+**Bundled Configs** (project repos don't need these):
 - `configs/eslint.config.js` / `eslintrc.v8.json` - JavaScript/TypeScript
 - `configs/checkstyle.xml` - Java
 - `configs/golangci.yml` - Go
@@ -252,7 +252,7 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 ## Documentation
 
 - **[MCP Setup](mcp/README.md)** - Model Context Protocol integration
-- **[Client Setup](clients/SETUP.md)** - Client onboarding guide
+- **[Project Setup](projects/SETUP.md)** - Project onboarding guide
 
 ## FAQ
 
@@ -282,7 +282,7 @@ A: No, it complements them. AppSec-Sentinel includes both security and code qual
 
 **Q: Can I use results from Snyk/Veracode/etc?**
 
-A: Yes. Export to JSON → place in `clients/client_exports/` → run `python src/tool_ingestion.py`. AppSec-Sentinel enhances their findings with cross-file analysis and AI context.
+A: Yes. Export to JSON → place in `projects/project_exports/` → run `python src/tool_ingestion.py`. AppSec-Sentinel enhances their findings with cross-file analysis and AI context.
 
 ## Development
 

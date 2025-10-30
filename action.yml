@@ -85,17 +85,16 @@ runs:
       with:
         version: v0.64.1
         
-    - name: Setup Gitleaks  
+    - name: Setup Gitleaks
       uses: gacts/gitleaks@v1
       with:
-        version: latest
+        version: v8.18.4
         run: false  # Just install, don't run yet
         
     - name: Setup Syft for SBOM generation
-      shell: bash
-      run: |
-        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-        syft version
+      uses: anchore/sbom-action/download-syft@v0.17.9
+      with:
+        syft-version: v1.19.2
         
     - name: Setup Node.js for dependency fixes
       uses: actions/setup-node@v4

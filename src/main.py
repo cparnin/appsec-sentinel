@@ -820,7 +820,7 @@ except ImportError:
 # SBOM and Tool Ingestion
 try:
     from sbom_generator import generate_repository_sbom
-    from tool_ingestion import ingest_client_tools
+    from tool_ingestion import ingest_project_tools
     SBOM_AVAILABLE = True
     TOOL_INGESTION_AVAILABLE = True
 except ImportError:
@@ -832,7 +832,7 @@ def show_interactive_menu() -> str:
     """Show interactive menu and return user choice"""
     print("🎯 Choose an option:")
     print("   [1] Security scan with auto-fixes + SBOM")
-    print("   [2] Enhance client tool results")
+    print("   [2] Enhance project tool results")
     print("   [q] Quit")
 
     while True:
@@ -1135,7 +1135,7 @@ def main() -> None:
     debug_env_vars = ['APPSEC_SCAN_LEVEL', 'APPSEC_AUTO_FIX', 'APPSEC_AUTO_FIX_MODE', 'GITHUB_ACTIONS']
     logger.debug(f"Environment variables: {[(var, os.getenv(var, 'not_set')) for var in debug_env_vars]}")
     
-    # Check if running in GitHub Actions (for client CI/CD)
+    # Check if running in GitHub Actions (for project CI/CD)
     if is_github_actions():
         return run_auto_mode()
 
@@ -1322,14 +1322,14 @@ def main() -> None:
             logger.info("✅ Completed handle_auto_remediation from main choice 1")
 
         elif choice == '2':
-            # Enhance client tool results (works on current directory exports)
+            # Enhance project tool results (works on current directory exports)
             if TOOL_INGESTION_AVAILABLE:
-                if Path("clients/client_exports").exists():
-                    print("🔄 Enhancing client tool results...")
-                    asyncio.run(ingest_client_tools())
+                if Path("projects/project_exports").exists():
+                    print("🔄 Enhancing project tool results...")
+                    asyncio.run(ingest_project_tools())
                     print("✅ Enhanced results available in outputs/")
                 else:
-                    print("❌ No clients/client_exports/ directory found. Place tool exports there first.")
+                    print("❌ No projects/project_exports/ directory found. Place tool exports there first.")
             else:
                 print("❌ Tool ingestion not available")
             

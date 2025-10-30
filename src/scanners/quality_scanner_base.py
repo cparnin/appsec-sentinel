@@ -184,7 +184,7 @@ class QualityScannerBase(ABC):
         try:
             # Check if tool is installed
             if not self.check_installed():
-                # Print to stdout so clients see it (not just logs)
+                # Print to stdout so users see it (not just logs)
                 print(f"⚠️  {self.display_name} not installed - skipping {'/'.join(self.languages)} code quality scan")
                 self.logger.info(f"💡 Install {self.display_name} to enable code quality scanning")
                 return []

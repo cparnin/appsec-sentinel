@@ -21,7 +21,7 @@ Go to **Settings → Secrets → Actions** and add:
 
 > ⚠️ **AWS_REGION must match the region in INFERENCE_PROFILE_ID** or AI fixes will fail
 
-**OpenAI (Alternative)** - Less recommended for client data
+**OpenAI (Alternative)** - Less recommended for project data
 
 Add secret `OPENAI_API_KEY`, then edit `security-scan.yml`:
 ```yaml

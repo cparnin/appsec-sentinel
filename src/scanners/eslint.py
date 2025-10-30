@@ -187,7 +187,7 @@ def run_eslint(repo_path: str, output_dir: str = None) -> list:
         )
 
         # Use AppSec-Sentinel bundled config as fallback if repo has none
-        # This ensures ESLint works everywhere without modifying client repos
+        # This ensures ESLint works everywhere without modifying project repos
         bundled_config_path = None
         if not has_config:
             logger.info("📋 No ESLint config in repo - using AppSec-Sentinel default config for code quality scan")

@@ -440,13 +440,13 @@ class ToolIngestionManager:
                 logger.info(f"💾 Saved {tool_name} findings to {file_path}")
 
 # Example usage and configuration
-async def ingest_client_tools(config_file: str = None) -> Dict[str, Any]:
+async def ingest_project_tools(config_file: str = None) -> Dict[str, Any]:
     """
-    Ingest findings from client's paid security tools
-    
+    Ingest findings from project's paid security tools
+
     Args:
         config_file: Path to configuration file with tool settings
-        
+
     Returns:
         Dict with ingestion results from all tools
     """
@@ -457,13 +457,13 @@ async def ingest_client_tools(config_file: str = None) -> Dict[str, Any]:
         {
             "tool": "snyk",
             "params": {
-                "file_path": "clients/client_exports/snyk_export.json"
+                "file_path": "projects/project_exports/snyk_export.json"
             }
         },
         {
             "tool": "veracode",
             "params": {
-                "file_path": "clients/client_exports/veracode_export.json"
+                "file_path": "projects/project_exports/veracode_export.json"
             }
         }
     ]
@@ -493,7 +493,7 @@ if __name__ == "__main__":
     
     async def main():
         # Test ingestion
-        results = await ingest_client_tools()
+        results = await ingest_project_tools()
         print(f"Ingested findings from {len(results)} tools")
         
         for tool, result in results.items():
