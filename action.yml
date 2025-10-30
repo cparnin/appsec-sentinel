@@ -8,11 +8,11 @@ branding:
 
 inputs:
   ai-provider:
-    description: "The AI provider to use ('aws_bedrock', 'openai', or 'claude')"
+    description: "The AI provider to use ('openai', 'claude', or 'aws_bedrock')"
     required: false
-    default: 'aws_bedrock'
+    default: 'openai'
   aws-access-key-id:
-    description: 'AWS Access Key ID for AWS Bedrock (recommended for client data security)'
+    description: 'AWS Access Key ID for AWS Bedrock'
     required: false
   aws-secret-access-key:
     description: 'AWS Secret Access Key for AWS Bedrock'
@@ -24,12 +24,12 @@ inputs:
   inference-profile-id:
     description: 'AWS Bedrock Inference Profile ID for Claude .5 (e.g., us.anthropic.claude-sonnet-4-5-20250929-v1:0)'
     required: false
-  # Legacy AI providers (for fallback - AWS Bedrock is recommended)
+  # Alternative AI providers
   openai-api-key:
-    description: 'OpenAI API key for AI-powered features (legacy)'
+    description: 'OpenAI API key for AI-powered features'
     required: false
   claude-api-key:
-    description: 'Claude API key for AI-powered features (legacy)'
+    description: 'Claude API key for AI-powered features'
     required: false
   auto-fix:
     description: 'Enable automatic remediation and PR creation'
@@ -136,7 +136,7 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
         AWS_REGION: ${{ inputs.aws-region }}
         INFERENCE_PROFILE_ID: ${{ inputs.inference-profile-id }}
-        # Legacy AI provider credentials (for fallback)
+        # Alternative AI provider credentials
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         CLAUDE_API_KEY: ${{ inputs.claude-api-key }}
         APPSEC_AUTO_FIX: ${{ inputs.auto-fix }}

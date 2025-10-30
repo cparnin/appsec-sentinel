@@ -1,6 +1,6 @@
 # AppSec-Sentinel
 
-AI-powered security scanner with **cross-file vulnerability analysis** and **automated remediation**. Supports 10+ languages with AWS Bedrock integration.
+AI-powered security scanner with **cross-file vulnerability analysis** and **automated remediation**. Supports 10+ languages with OpenAI, Claude, and AWS Bedrock.
 
 > 📖 **Open Source** - Licensed under the MIT License. Free for personal and commercial use.
 
@@ -11,7 +11,7 @@ AI-powered security scanner with **cross-file vulnerability analysis** and **aut
 - **Zero Configuration Required** - Works on any repo out-of-the-box with sensible defaults
 - **Auto-Remediation** - Creates GitHub PRs with AI-generated code fixes (deterministic by default)
 - **Cross-File Analysis** - Traces attack chains across multiple files and languages
-- **AWS Bedrock Integration** - Secure AI processing via Bedrock Sonnet 4.5
+- **Flexible AI Providers** - OpenAI (default), Claude, or AWS Bedrock
 - **10+ Languages** - JavaScript, TypeScript, Python, Java, Go, Ruby, Rust, C#, PHP, Swift, Kotlin
 - **3 Deployment Modes** - Web UI, CLI, and GitHub Actions CI/CD
 - **MCP Server** - Model Context Protocol integration for Claude Desktop
@@ -35,17 +35,16 @@ AI-powered security scanner with **cross-file vulnerability analysis** and **aut
 
 ### Prerequisites
 
-Configure AWS credentials in `.env` (only needed for AI auto-remediation):
+Configure AI provider in `.env` (only needed for AI auto-remediation):
 ```bash
 cp env.example .env
 # Edit .env and set:
-# AI_PROVIDER=aws_bedrock
-# AWS_ACCESS_KEY_ID=...
-# AWS_SECRET_ACCESS_KEY=...
-# AWS_REGION=us-east-1
+# AI_PROVIDER=openai
+# OPENAI_API_KEY=sk-...
+# AI_MODEL=gpt-5-mini
 ```
 
-> 💡 **AWS credentials**: Create an IAM user with Bedrock access or use your existing AWS credentials
+> 💡 **Alternative providers**: Also supports `AI_PROVIDER=claude` or `AI_PROVIDER=aws_bedrock` (see env.example for all options)
 
 ### Web Interface
 
@@ -76,10 +75,8 @@ cp env.example .env
 # Copy workflow template
 cp clients/security-scan.yml .github/workflows/
 
-# Add GitHub secrets:
-#   - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-#   - AWS_REGION (must match inference profile region)
-#   - INFERENCE_PROFILE_ID (Bedrock ARN)
+# Add GitHub secret:
+#   - OPENAI_API_KEY (or CLAUDE_API_KEY, or AWS credentials)
 
 git add .github/workflows/security-scan.yml
 git commit -m "Add AppSec-Sentinel security scanning"
@@ -146,7 +143,7 @@ Traces attack paths across multiple files and languages:
 ## Architecture
 
 ```
-Repository → [Semgrep + Gitleaks + Trivy] → Cross-File Analysis → AI (Bedrock Sonnet 4.5) → PRs + Reports
+Repository → [Semgrep + Gitleaks + Trivy] → Cross-File Analysis → AI (OpenAI/Claude/Bedrock) → PRs + Reports
 ```
 
 ## Code Quality Scanning
@@ -271,7 +268,7 @@ A: Exposes 6 security tools to Claude Desktop - domain-specific security functio
 
 A: PRs require manual review before merge. Separate PRs for code fixes vs dependencies. Conservative patterns only (SQLi, XSS, input validation). Your tests still validate. 70-80% are safe after quick review.
 
-**Q: What data goes to AWS Bedrock?**
+**Q: What data goes to the AI provider?**
 
 A: Vulnerability metadata, file names, line numbers, code snippets. Never full codebases. Secrets flagged locally, never sent to AI.
 

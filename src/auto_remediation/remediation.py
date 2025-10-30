@@ -340,7 +340,7 @@ class AutoRemediator:
             if self.model is None or not self.model.startswith(('gpt', 'o1')):
                 if self.model is not None:  # Only warn if model was explicitly set to invalid value
                     logger.warning(f"Model '{self.model}' is not a valid OpenAI model. Falling back to default.")
-                self.model = os.getenv('AI_MODEL', 'gpt-4.1-mini')
+                self.model = os.getenv('AI_MODEL', 'gpt-5-mini')
         elif self.ai_provider == 'claude':
             self.client = anthropic.Anthropic(api_key=self.api_key)
             if self.model is None or not self.model.startswith('claude'):

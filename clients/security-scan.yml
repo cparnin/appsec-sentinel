@@ -41,16 +41,19 @@ jobs:
           #APPSEC_DEBUG: 'true'        # Enable to see Semgrep version and debug info
           #APPSEC_LOG_LEVEL: 'DEBUG'   # Show detailed debugging information
         with:
-          # AWS Bedrock Configuration (RECOMMENDED for client data security)
-          ai-provider: 'aws_bedrock'
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
-          inference-profile-id: ${{ secrets.INFERENCE_PROFILE_ID }}  # Required for Claude Sonnet 4+
-          
-          # Legacy AI providers (uncomment to use instead of AWS Bedrock)
-          # ai-provider: 'openai'
-          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          # OpenAI Configuration (ACTIVE)
+          ai-provider: 'openai'
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+
+          # AWS Bedrock Configuration (Alternative - uncomment to use)
+          # ai-provider: 'aws_bedrock'
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          # inference-profile-id: ${{ secrets.INFERENCE_PROFILE_ID }}  # Required for Claude Sonnet 4+
+
+          # Claude API Configuration (Alternative - uncomment to use)
+          # ai-provider: 'claude'
           # claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
           
           auto-fix: 'true'
