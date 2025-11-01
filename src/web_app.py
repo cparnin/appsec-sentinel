@@ -332,6 +332,94 @@ def scan_repository():
         logger.error(f"Scan error: {e}")
         return jsonify({'error': f'Scan failed: {str(e)}'}), 500
 
+@app.route('/threat-model', methods=['POST'])
+def generate_threat_model():
+    """
+    Generate threat model using STRIDE framework.
+
+    Request body:
+    {
+        "repo_path": "/path/to/repository"
+    }
+    """
+    try:
+        # Parse request
+        data = request.get_json()
+        if not data or 'repo_path' not in data:
+            return jsonify({'error': 'repo_path is required'}), 400
+
+        repo_path = data['repo_path']
+
+        # Validate repository path
+        try:
+            validated_path = validate_repo_path(repo_path)
+        except (ValueError, PermissionError) as e:
+            return jsonify({'error': f'Invalid repository path: {str(e)}'}), 400
+
+        # Track usage
+        track_usage()
+
+        # Set up output directory with repo/branch structure
+        output_path = get_output_path(str(validated_path), BASE_OUTPUT_DIR)
+        output_dirs = setup_output_directories(output_path)
+        output_dir = output_dirs['base']
+
+        logger.info(f"🛡️  Generating threat model for {validated_path}")
+
+        # Load existing scan findings if available
+        findings = []
+        raw_dir = output_dir / "raw"
+        if raw_dir.exists():
+            logger.info("📊 Loading existing scan results for enhanced analysis")
+            for json_file in raw_dir.glob("*.json"):
+                try:
+                    with open(json_file) as f:
+                        data_content = json.load(f)
+                        if isinstance(data_content, dict) and 'results' in data_content:
+                            findings.extend(data_content['results'])
+                        elif isinstance(data_content, list):
+                            findings.extend(data_content)
+                except Exception as e:
+                    logger.debug(f"Could not load {json_file}: {e}")
+
+        # Import and run threat analyzer
+        from threat_modeling import ThreatAnalyzer
+
+        analyzer = ThreatAnalyzer(str(validated_path))
+        threat_model = analyzer.analyze(findings)
+
+        # Export threat model files
+        exported_files = analyzer.export_threat_model(threat_model, str(output_dir))
+
+        # Track output dir for report serving
+        global LAST_SCAN_OUTPUT_DIR
+        LAST_SCAN_OUTPUT_DIR = output_dir
+
+        logger.info(f"✅ Threat model generated at {output_dir}")
+
+        return jsonify({
+            'success': True,
+            'threat_model': threat_model,
+            'files': {
+                'json': str(exported_files['json']),
+                'markdown': str(exported_files['markdown']),
+                'diagram': str(exported_files['diagram'])
+            },
+            'summary': {
+                'total_threats': threat_model['summary']['total_threats'],
+                'attack_surface_score': threat_model['summary']['attack_surface_score'],
+                'risk_level': threat_model['summary']['risk_level'],
+                'stride_breakdown': threat_model['summary']['stride_breakdown']
+            }
+        }), 200
+
+    except ImportError as e:
+        logger.error(f"Threat modeling module not available: {e}")
+        return jsonify({'error': 'Threat modeling module not available'}), 500
+    except Exception as e:
+        logger.error(f"Threat model generation error: {e}")
+        return jsonify({'error': f'Threat model generation failed: {str(e)}'}), 500
+
 @app.route('/report', methods=['GET'])
 def get_html_report():
     """Serve the generated HTML report."""

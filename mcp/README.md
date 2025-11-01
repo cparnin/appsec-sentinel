@@ -67,7 +67,7 @@ cp mcp_env.example mcp_env
 
 ### 4. Restart Claude Desktop
 
-Quit completely and reopen. Click 🔨 (hammer) icon to verify 14 AppSec-Sentinel tools appear.
+Quit completely and reopen. Click 🔨 (hammer) icon to verify 15 AppSec-Sentinel tools appear.
 
 ## Usage Examples
 
@@ -78,12 +78,14 @@ Show cross-file analysis for WebGoat
 
 Auto-fix vulnerabilities in nodejs-goof and create PRs
 
+Generate threat model for my-application
+
 Generate SBOM for my-project
 
 Assess business impact for vulnerabilities in WebGoat
 ```
 
-## Available Tools (14 Total)
+## Available Tools (15 Total)
 
 ### Core Tools
 | Tool | Purpose | Input | Output |
@@ -100,6 +102,7 @@ Assess business impact for vulnerabilities in WebGoat
 | `cross_file_analysis` | Attack chain detection | Repo name | Cross-file vulnerabilities, tech stack |
 | `assess_business_impact` | Risk assessment | Repo name | Risk level, recommendations |
 | `generate_sbom` | Software BOM | Repo name | CycloneDX & SPDX summaries |
+| `generate_threat_model` | STRIDE threat analysis | Repo name | Architecture, threats, risk level |
 
 ### API Tools (for IXaidev/Agents)
 | Tool | Purpose | Input | Output |

@@ -190,6 +190,17 @@ class EverythingAppSecMCP:
                 }
             },
             {
+                "name": "generate_threat_model",
+                "description": "Generate automated threat model using STRIDE framework. Performs architecture analysis, identifies trust boundaries, maps attack surface, and categorizes threats. Returns structured threat model with visual diagram. Example: 'Generate threat model for this application'",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "repo_path": {"type": "string", "description": "Repository to analyze (scan first for enhanced analysis)"}
+                    },
+                    "required": ["repo_path"]
+                }
+            },
+            {
                 "name": "health_check",
                 "description": "Diagnostic tool to verify MCP server health, scanner availability, and configuration. Use when troubleshooting setup issues or verifying installation. Example: 'Check if AppSec-Sentinel is working correctly'",
                 "inputSchema": {
@@ -278,6 +289,8 @@ class EverythingAppSecMCP:
                 result = self.get_code_quality_findings(arguments)
             elif tool_name == "get_sbom_data":
                 result = self.get_sbom_data_structured(arguments)
+            elif tool_name == "generate_threat_model":
+                result = self.generate_threat_model(arguments)
             elif tool_name == "health_check":
                 result = self.health_check(arguments)
             else:
@@ -1809,6 +1822,90 @@ Run `scan_repository` first to generate the HTML security report.
         result["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
         return json.dumps(result, indent=2)
+
+    def generate_threat_model(self, args):
+        """Generate threat model using STRIDE framework"""
+        repo_path = self.find_repo(args["repo_path"])
+        outputs_path = self._get_repo_output_path(repo_path)
+
+        try:
+            # Import threat modeling module
+            sys.path.insert(0, os.path.join(self.ix_guard_path, 'src'))
+            from threat_modeling import ThreatAnalyzer
+
+            # Load existing scan findings if available
+            findings = []
+            raw_dir = os.path.join(outputs_path, "raw")
+            if os.path.exists(raw_dir):
+                for json_file in os.listdir(raw_dir):
+                    if json_file.endswith('.json'):
+                        try:
+                            with open(os.path.join(raw_dir, json_file)) as f:
+                                data = json.load(f)
+                                if isinstance(data, dict) and 'results' in data:
+                                    findings.extend(data['results'])
+                                elif isinstance(data, list):
+                                    findings.extend(data)
+                        except Exception:
+                            pass
+
+            # Create analyzer and generate threat model
+            analyzer = ThreatAnalyzer(repo_path)
+            threat_model = analyzer.analyze(findings)
+
+            # Export threat model files
+            exported_files = analyzer.export_threat_model(threat_model, outputs_path)
+
+            # Format output for MCP
+            output = []
+            output.append("🛡️  THREAT MODEL GENERATED\n")
+            output.append("=" * 80)
+            output.append("\n\n📊 SUMMARY\n")
+            output.append(f"  • Total Threats: {threat_model['summary']['total_threats']}")
+            output.append(f"  • Attack Surface Risk: {threat_model['summary']['attack_surface_score']}")
+            output.append(f"  • Overall Risk Level: {threat_model['summary']['risk_level']}\n")
+
+            # STRIDE Breakdown
+            output.append("\n🎯 STRIDE THREAT BREAKDOWN\n")
+            for category, count in threat_model['summary']['stride_breakdown'].items():
+                if count > 0:
+                    output.append(f"  • {category.replace('_', ' ')}: {count}")
+
+            # Architecture Components
+            output.append("\n\n🏗️  ARCHITECTURE COMPONENTS\n")
+            for comp in threat_model['architecture']['components'][:5]:
+                output.append(f"  • {comp['name']} ({comp['type']})")
+
+            # Trust Boundaries
+            if threat_model['architecture']['trust_boundaries']:
+                output.append("\n\n🔒 TRUST BOUNDARIES\n")
+                for boundary in threat_model['architecture']['trust_boundaries']:
+                    output.append(f"  • {boundary['name']} - Risk: {boundary['risk']}")
+                    output.append(f"    {boundary['description']}")
+
+            # Top Threat Scenarios
+            if threat_model['threat_scenarios']:
+                output.append("\n\n⚠️  TOP THREAT SCENARIOS\n")
+                for i, scenario in enumerate(threat_model['threat_scenarios'][:3], 1):
+                    output.append(f"\n{i}. [{scenario['severity']}] {scenario['title']}")
+                    output.append(f"   Attack Vector: {scenario['attack_vector']}")
+                    output.append(f"   Impact: {scenario['impact']}")
+
+            # Generated Files
+            output.append(f"\n\n📄 REPORTS GENERATED\n")
+            output.append(f"  • JSON: {exported_files['json']}")
+            output.append(f"  • Markdown: {exported_files['markdown']}")
+            output.append(f"  • Diagram: {exported_files['diagram']}")
+
+            output.append("\n\n" + "=" * 80)
+            output.append("\n✅ Threat model complete! See THREAT_MODEL.md for full report.\n")
+
+            return "\n".join(output)
+
+        except ImportError as e:
+            return f"❌ Threat modeling module not available: {e}\n\nPlease ensure threat_modeling module is installed."
+        except Exception as e:
+            return f"❌ Threat model generation failed: {e}"
 
     def health_check(self, args):
         """Comprehensive health check for MCP server and dependencies"""

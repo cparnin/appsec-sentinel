@@ -7,6 +7,7 @@ AI-powered security scanner with **cross-file vulnerability analysis** and **aut
 ## Features
 
 - **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters
+- **Threat Modeling** - Automated STRIDE analysis, architecture mapping, and attack surface assessment
 - **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no project setup needed)
 - **Zero Configuration Required** - Works on any repo out-of-the-box with sensible defaults
 - **Auto-Remediation** - Creates GitHub PRs with AI-generated code fixes (deterministic by default)
@@ -87,8 +88,9 @@ git push
 
 1. **Scan** - Runs 3 scanners in parallel (SAST, secrets, dependencies)
 2. **Analyze** - Cross-file analysis identifies attack chains across files
-3. **Remediate** - AI generates fixes and creates separate PRs for code vs dependencies
-4. **Report** - HTML reports + SBOM files (CycloneDX & SPDX)
+3. **Threat Model** - STRIDE analysis maps vulnerabilities to architectural threats
+4. **Remediate** - AI generates fixes and creates separate PRs for code vs dependencies
+5. **Report** - HTML reports + SBOM files + threat models (CycloneDX & SPDX)
 
 ## MCP Integration
 
@@ -116,9 +118,9 @@ Turn Claude Desktop into a conversational security expert - scan, analyze, and a
 
 > 💡 Credentials in `mcp/mcp_env` - no secrets in config! Install gitleaks/trivy first.
 
-**14 MCP Tools Available:**
+**15 MCP Tools Available:**
 - **Core:** `scan_repository` • `auto_remediate` • `get_report` • `view_report_html` • `health_check`
-- **Analysis:** `cross_file_analysis` • `assess_business_impact` • `generate_sbom`
+- **Analysis:** `cross_file_analysis` • `assess_business_impact` • `generate_sbom` • `generate_threat_model`
 - **API Tools:** `get_scan_findings` • `get_semgrep_findings` • `get_trivy_findings` • `get_gitleaks_findings` • `get_code_quality_findings` • `get_sbom_data`
 
 **Usage:** "Scan nodejs-goof for vulnerabilities" → detailed findings with file paths, line numbers, remediation
@@ -251,8 +253,10 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 
 ## Documentation
 
+- **[Threat Modeling](THREAT_MODELING.md)** - Automated threat analysis using STRIDE framework
 - **[MCP Setup](mcp/README.md)** - Model Context Protocol integration
 - **[Project Setup](projects/SETUP.md)** - Project onboarding guide
+- **[Architecture](ARCHITECTURE.md)** - System architecture and design patterns
 
 ## FAQ
 

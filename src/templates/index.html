@@ -600,8 +600,12 @@
                                 <input type="checkbox" name="tool_sbom" value="sbom" checked style="width: 18px; height: 18px; cursor: pointer;">
                                 <span style="font-weight: 500;">📋 SBOM Generation</span>
                             </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: rgba(255, 255, 255, 0.6); padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0; transition: all 0.3s;" onmouseover="this.style.borderColor='#4a90e2'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                <input type="checkbox" name="tool_threat_model" value="threat_model" style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="font-weight: 500;">🛡️ Threat Model (STRIDE)</span>
+                            </label>
                         </div>
-                        <small style="color: #666; font-size: 0.9em; display: block; margin-top: 8px;">Select which tools to include in the scan</small>
+                        <small style="color: #666; font-size: 0.9em; display: block; margin-top: 8px;">Select which tools to include in the scan (threat modeling unchecked by default)</small>
                     </div>
 
                     <button type="submit" class="scan-button" id="scanButton">
@@ -675,6 +679,14 @@
                             </div>
                             <div class="progress-indicator" id="remediationIndicator">⏸️</div>
                         </div>
+                        <div class="progress-item" id="threatModelProgress" style="display: none;">
+                            <div class="progress-icon">🛡️</div>
+                            <div class="progress-content">
+                                <div class="progress-label">Threat Modeling (STRIDE)</div>
+                                <div class="progress-status" id="threatModelStatus">Waiting...</div>
+                            </div>
+                            <div class="progress-indicator" id="threatModelIndicator">⏸️</div>
+                        </div>
                     </div>
                     <div id="progressSummary" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.95); border-radius: 8px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); backdrop-filter: blur(10px);">
                         <div style="font-weight: 700; margin-bottom: 5px; color: #1a202c;">Scan Progress</div>
@@ -699,6 +711,14 @@
                     <a href="/report" target="_blank" class="download-btn">📄 HTML Report</a>
                     <a href="/reports/sbom.cyclonedx.json" class="download-btn">📋 SBOM (CycloneDX)</a>
                     <a href="/reports/sbom.spdx.json" class="download-btn">📋 SBOM (SPDX)</a>
+                </div>
+                <div id="threatModelLinks" style="margin-top: 15px; display: none;">
+                    <h3 style="margin-bottom: 10px; color: #2c3e50;">🛡️ Threat Model</h3>
+                    <div class="download-buttons">
+                        <a href="/reports/THREAT_MODEL.md" class="download-btn">📄 Threat Report (MD)</a>
+                        <a href="/reports/threat_model.json" class="download-btn">📊 Threat Model (JSON)</a>
+                        <a href="/reports/architecture.mermaid" class="download-btn">🏗️ Architecture Diagram</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -857,12 +877,19 @@
                 { id: 'enhancement', name: 'AI Enhancement', duration: 5000, messages: ['Starting AI analysis...', 'Enhancing findings with context...', 'Applying intelligence...'] },
                 { id: 'report', name: 'Report Generation', duration: 3000, messages: ['Generating HTML report...', 'Creating summary...', 'Finalizing report...'] }
             ],
+            threatModelPhase: { id: 'threatModel', name: 'Threat Modeling', duration: 20000, messages: ['Discovering architecture components...', 'Mapping attack surface...', 'Applying STRIDE framework...', 'Identifying trust boundaries...', 'Generating threat scenarios...', 'Exporting threat model files...'] },
             currentPhase: 0,
 
-            start: function() {
+            start: function(showThreatModel = false) {
                 document.getElementById('progressSummary').style.display = 'block';
                 document.getElementById('codeQualityContainer').style.display = 'block';
                 document.getElementById('additionalProgress').style.display = 'block';
+
+                // Show threat model progress if checkbox is checked
+                if (showThreatModel) {
+                    document.getElementById('threatModelProgress').style.display = 'flex';
+                }
+
                 this.runPhase(0);
             },
             
@@ -924,18 +951,59 @@
             complete: function() {
                 document.getElementById('overallStatus').innerHTML = '<span style="color: #38b2ac; font-weight: 600;">✅ Scan completed successfully!</span>';
             },
-            
+
+            runThreatModel: function() {
+                const phase = this.threatModelPhase;
+                const progressItem = document.getElementById(phase.id + 'Progress');
+                const statusElement = document.getElementById(phase.id + 'Status');
+                const indicatorElement = document.getElementById(phase.id + 'Indicator');
+
+                // Ensure it's visible (in case it wasn't shown during start)
+                progressItem.style.display = 'flex';
+
+                // Mark as running
+                progressItem.classList.add('running');
+                indicatorElement.textContent = '⏳';
+                indicatorElement.classList.remove('completed');
+
+                // Update overall status
+                document.getElementById('overallStatus').textContent = `Running ${phase.name} analysis...`;
+
+                // Cycle through messages
+                let messageIndex = 0;
+                const messageInterval = setInterval(() => {
+                    if (messageIndex < phase.messages.length) {
+                        statusElement.textContent = phase.messages[messageIndex];
+                        messageIndex++;
+                    }
+                }, phase.duration / phase.messages.length);
+
+                // Return promise that resolves when phase completes
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        clearInterval(messageInterval);
+                        progressItem.classList.remove('running');
+                        progressItem.classList.add('completed');
+                        statusElement.textContent = 'Completed ✓';
+                        indicatorElement.textContent = '✅';
+                        indicatorElement.classList.add('completed');
+                        document.getElementById('overallStatus').innerHTML = '<span style="color: #38b2ac; font-weight: 600;">✅ Threat modeling completed successfully!</span>';
+                        resolve();
+                    }, phase.duration);
+                });
+            },
+
             error: function(phase, message) {
                 const progressItem = document.getElementById(phase + 'Progress');
                 const statusElement = document.getElementById(phase + 'Status');
                 const indicatorElement = document.getElementById(phase + 'Indicator');
-                
+
                 progressItem.classList.remove('running');
                 progressItem.classList.add('error');
                 statusElement.textContent = message || 'Error occurred';
                 indicatorElement.textContent = '❌';
                 indicatorElement.classList.add('completed');
-                
+
                 document.getElementById('overallStatus').innerHTML = '<span style="color: #ff6b6b; font-weight: 600;">⚠️ Scan encountered issues</span>';
             }
         };
@@ -953,6 +1021,8 @@
             if (formData.get('tool_code_quality')) selectedTools.push('code_quality');
             if (formData.get('tool_sbom')) selectedTools.push('sbom');
 
+            const runThreatModel = formData.get('tool_threat_model') ? true : false;
+
             const scanData = {
                 repo_path: formData.get('repoPath'),
                 scan_level: formData.get('scanLevel'),
@@ -967,9 +1037,9 @@
             document.getElementById('error').style.display = 'none';
             document.getElementById('scanButton').disabled = true;
             document.getElementById('scanButton').textContent = '⏳ Scanning...';
-            
-            // Start progress simulation
-            progressManager.start();
+
+            // Start progress simulation (pass whether threat modeling is enabled)
+            progressManager.start(runThreatModel);
             
             try {
                 const response = await fetch('/scan', {
@@ -981,11 +1051,40 @@
                 });
                 
                 const result = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(result.error || 'Scan failed');
                 }
-                
+
+                // If threat modeling is enabled, run it after scan
+                if (runThreatModel) {
+                    try {
+                        // Start threat model progress animation
+                        const threatPromise = progressManager.runThreatModel();
+
+                        // Run actual threat model API call
+                        const threatResponse = await fetch('/threat-model', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ repo_path: scanData.repo_path })
+                        });
+
+                        const threatResult = await threatResponse.json();
+
+                        // Wait for progress animation to complete
+                        await threatPromise;
+
+                        if (threatResponse.ok) {
+                            result.threat_model_summary = threatResult.summary;
+                        }
+                    } catch (error) {
+                        console.error('Threat model generation failed:', error);
+                        progressManager.error('threatModel', 'Threat modeling failed');
+                    }
+                }
+
                 displayResults(result);
                 
             } catch (error) {
@@ -1003,13 +1102,13 @@
         function displayResults(result) {
             const summary = result.scan_summary;
             const findings = result.findings || [];
-            
+
             // Update scan info
-            document.getElementById('scanInfo').textContent = 
+            document.getElementById('scanInfo').textContent =
                 `Scanned: ${summary.repository_path} • Level: ${summary.scan_level} • Auto-fix: ${summary.auto_fix_enabled ? 'Enabled' : 'Disabled'}`;
-            
-            // Update summary cards
-            const summaryHtml = `
+
+            // Build summary cards
+            let summaryCards = `
                 <div class="summary-card">
                     <h3>${summary.total_findings}</h3>
                     <p>Total Findings</p>
@@ -1027,7 +1126,23 @@
                     <p>Auto-fix Applied</p>
                 </div>
             `;
-            document.getElementById('summary').innerHTML = summaryHtml;
+
+            // Add threat model card if available
+            if (result.threat_model_summary) {
+                summaryCards += `
+                    <div class="summary-card" style="border-top-color: #9333ea;">
+                        <h3>${result.threat_model_summary.total_threats}</h3>
+                        <p>STRIDE Threats</p>
+                    </div>
+                    <div class="summary-card" style="border-top-color: #9333ea;">
+                        <h3>${result.threat_model_summary.risk_level}</h3>
+                        <p>Risk Level</p>
+                    </div>
+                `;
+                document.getElementById('threatModelLinks').style.display = 'block';
+            }
+
+            document.getElementById('summary').innerHTML = summaryCards;
             
             // Findings details removed - users can view the comprehensive HTML report
             
