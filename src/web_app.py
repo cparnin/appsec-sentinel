@@ -385,10 +385,14 @@ def generate_threat_model():
         # Import and run threat analyzer
         from threat_modeling import ThreatAnalyzer
 
+        logger.info("🔍 Discovering architecture components...")
         analyzer = ThreatAnalyzer(str(validated_path))
+
+        logger.info("🎯 Analyzing threats with STRIDE framework...")
         threat_model = analyzer.analyze(findings)
 
         # Export threat model files
+        logger.info("📝 Exporting threat model files...")
         exported_files = analyzer.export_threat_model(threat_model, str(output_dir))
 
         # Track output dir for report serving
@@ -455,7 +459,9 @@ def get_report_file(filename):
         # Security: Only allow specific file types
         allowed_files = {
             'semgrep.json', 'gitleaks.json', 'trivy-sca.json',
-            'sbom.cyclonedx.json', 'sbom.spdx.json', 'pr-findings.txt'
+            'sbom.cyclonedx.json', 'sbom.spdx.json', 'pr-findings.txt',
+            # Threat model files
+            'threat_model.json', 'THREAT_MODEL.md', 'architecture.mermaid'
         }
 
         if filename not in allowed_files:

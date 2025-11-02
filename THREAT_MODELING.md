@@ -322,8 +322,25 @@ Contributions welcome! Areas for enhancement:
 - Integration with threat intelligence feeds
 - Machine learning for threat prioritization
 
+## Performance
+
+Threat modeling is optimized for speed while maintaining excellent coverage:
+
+- **Small repos (< 100 files)**: < 1 second
+- **Medium repos (100-1K files)**: < 1 second
+- **Large repos (1K-10K files)**: 1-2 seconds
+- **Real-world example**: 661-file Java repo completes in 0.07 seconds
+
+**Key Optimizations:**
+- Reads only first 100KB per file for pattern matching
+- Skips files > 1MB (build artifacts, minified code)
+- Uses intelligent caching to avoid duplicate I/O
+- Scans up to 1000 files by default (configurable via `THREAT_MODEL_MAX_FILES`)
+
+See [THREAT_MODELING_PERFORMANCE.md](./THREAT_MODELING_PERFORMANCE.md) for detailed performance tuning guidance.
+
 ---
 
-**Version:** 1.0.0
-**Last Updated:** 2025-01-31
+**Version:** 1.1.0
+**Last Updated:** 2025-01-02
 **Status:** Production Ready

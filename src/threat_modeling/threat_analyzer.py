@@ -15,13 +15,23 @@ from collections import defaultdict
 class ThreatAnalyzer:
     """Automated threat modeling using STRIDE and architecture analysis"""
 
-    def __init__(self, repo_path: str):
+    def __init__(self, repo_path: str, max_files: int = None):
         self.repo_path = Path(repo_path)
         self.threats = []
         self.components = []
         self.entry_points = []
         self.data_stores = []
         self.trust_boundaries = []
+        # Allow customization via env var or constructor parameter
+        # Default: 1000 files - with optimizations, this is still very fast (< 1 sec for most repos)
+        # Thanks to 100KB partial reads and file size checks, we can scan more files without slowdown
+        self.max_files = max_files or int(os.environ.get('THREAT_MODEL_MAX_FILES', '1000'))
+        # Cache for file contents to avoid re-reading same files
+        self._file_content_cache = {}
+        # Max file size to read (skip large files that are likely build artifacts)
+        self._max_file_size_bytes = 1024 * 1024  # 1MB
+        # Max content to read for pattern matching (first 100KB is usually enough)
+        self._max_read_size = 100 * 1024  # 100KB
 
     def analyze(self, findings: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -76,15 +86,67 @@ class ThreatAnalyzer:
         }
 
         detected_frameworks = []
+        files_scanned = 0
+        MAX_FILES_TO_SCAN = self.max_files  # Configurable limit to prevent hanging on large repos
+        early_exit_triggered = False
 
-        # Scan for frameworks and components
-        for ext in ['.js', '.ts', '.py', '.java', '.rb', '.php', '.go', '.rs']:
-            for file_path in self.repo_path.rglob(f'*{ext}'):
-                if self._should_skip_path(file_path):
+        # Skip directories (used with os.walk for fast traversal)
+        skip_dirs = {
+            'node_modules', '.git', 'vendor', 'venv', '.venv', 'dist', 'build', '__pycache__',
+            'coverage', '.pytest_cache', '.mypy_cache', '.tox', 'htmlcov', 'site-packages',
+            'bower_components', 'jspm_packages', '.next', '.nuxt', 'out', 'target',
+            'bin', 'obj', 'packages', '.gradle', '.idea', '.vscode', 'logs', 'tmp', 'temp'
+        }
+
+        # Extensions to scan
+        target_extensions = {'.js', '.ts', '.py', '.java', '.rb', '.php', '.go', '.rs'}
+
+        print(f"🔍 Starting architecture discovery (max {MAX_FILES_TO_SCAN} files)...")
+
+        # Use os.walk for much faster traversal with directory pruning
+        for root, dirs, files in os.walk(self.repo_path):
+            # CRITICAL: Prune directories in-place to avoid traversing them
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+
+            for filename in files:
+                # Check file extension
+                if not any(filename.endswith(ext) for ext in target_extensions):
                     continue
 
+                # Stop if we've scanned enough files
+                if files_scanned >= MAX_FILES_TO_SCAN:
+                    print(f"⚠️  Reached file scan limit ({MAX_FILES_TO_SCAN} files)")
+                    early_exit_triggered = True
+                    break
+
+                # Early exit if we have enough information
+                if (len(detected_frameworks) >= 3 and
+                    len(self.entry_points) >= 20 and
+                    len(self.data_stores) >= 5):
+                    early_exit_triggered = True
+                    print(f"✓ Sufficient architecture data collected: {len(detected_frameworks)} frameworks, {len(self.entry_points)} endpoints, {len(self.data_stores)} data stores")
+                    break
+
+                files_scanned += 1
+                file_path = Path(root) / filename
+
+                # Progress logging every 25 files
+                if files_scanned % 25 == 0:
+                    print(f"   📄 Scanned {files_scanned} files... (found {len(detected_frameworks)} frameworks, {len(self.entry_points)} endpoints)")
+
                 try:
-                    content = file_path.read_text(encoding='utf-8', errors='ignore')
+                    # Skip files that are too large (likely build artifacts or minified code)
+                    file_size = file_path.stat().st_size
+                    if file_size > self._max_file_size_bytes:
+                        continue
+
+                    # Read only first 100KB for pattern matching (sufficient for architecture detection)
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read(self._max_read_size)
+
+                    # Cache content for potential reuse
+                    cache_key = str(file_path.relative_to(self.repo_path))
+                    self._file_content_cache[cache_key] = content
 
                     # Detect frameworks
                     for fw, patterns in frameworks.items():
@@ -94,26 +156,32 @@ class ThreatAnalyzer:
                                 self.components.append({
                                     'name': fw.title(),
                                     'type': 'web_framework',
-                                    'file': str(file_path.relative_to(self.repo_path))
+                                    'file': cache_key
                                 })
 
                     # Detect entry points (routes, controllers, APIs)
                     if any(p in content for p in ['@app.', 'app.get', 'app.post', 'Route::', '@RestController', '@RequestMapping']):
                         self.entry_points.append({
-                            'file': str(file_path.relative_to(self.repo_path)),
+                            'file': cache_key,
                             'type': 'http_endpoint'
                         })
 
                     # Detect data stores
                     if any(p in content for p in ['mongoose.', 'Sequelize', 'models.Model', 'JpaRepository', 'ActiveRecord', 'PDO', 'sql.DB']):
-                        if str(file_path.relative_to(self.repo_path)) not in [d['file'] for d in self.data_stores]:
+                        if cache_key not in [d['file'] for d in self.data_stores]:
                             self.data_stores.append({
-                                'file': str(file_path.relative_to(self.repo_path)),
+                                'file': cache_key,
                                 'type': 'database'
                             })
 
                 except Exception:
                     continue
+
+            if early_exit_triggered:
+                break
+
+        # Log scanning results
+        print(f"📊 Architecture discovery: scanned {files_scanned} files, found {len(detected_frameworks)} frameworks, {len(self.entry_points)} endpoints, {len(self.data_stores)} data stores")
 
         # Add generic components if none detected
         if not self.components:
@@ -326,25 +394,76 @@ class ThreatAnalyzer:
             return "LOW"
 
     def _identify_input_handlers(self) -> List[str]:
-        """Identify user input handlers"""
+        """Identify user input handlers (uses cached file contents when available)"""
         handlers = set()
 
-        for file_path in self.repo_path.rglob('*'):
-            if file_path.is_file() and file_path.suffix in ['.js', '.ts', '.py', '.java', '.rb', '.php']:
-                if self._should_skip_path(file_path):
-                    continue
-                try:
-                    content = file_path.read_text(encoding='utf-8', errors='ignore')
+        # Input handler patterns
+        input_patterns = ['req.body', 'request.form', 'request.POST', 'request.GET',
+                         '@RequestBody', 'params[:' , '$_POST', '$_GET', 'ctx.request.body']
 
-                    # Detect input handlers
-                    input_patterns = ['req.body', 'request.form', 'request.POST', 'request.GET',
-                                     '@RequestBody', 'params[:' , '$_POST', '$_GET', 'ctx.request.body']
+        # First, check cached files from architecture discovery
+        for cache_key, content in self._file_content_cache.items():
+            if any(p in content for p in input_patterns):
+                handlers.add(cache_key)
 
-                    if any(p in content for p in input_patterns):
-                        handlers.add(str(file_path.relative_to(self.repo_path)))
+            # Stop if we have enough
+            if len(handlers) >= 10:
+                return list(handlers)[:10]
 
-                except Exception:
-                    continue
+        # If we need more, scan additional files (but this should be rare now)
+        if len(handlers) < 10:
+            files_scanned = 0
+            MAX_FILES = 50  # Reduced since we already have cache
+
+            # Skip directories
+            skip_dirs = {
+                'node_modules', '.git', 'vendor', 'venv', '.venv', 'dist', 'build', '__pycache__',
+                'coverage', '.pytest_cache', '.mypy_cache', '.tox', 'htmlcov', 'site-packages',
+                'bower_components', 'jspm_packages', '.next', '.nuxt', 'out', 'target',
+                'bin', 'obj', 'packages', '.gradle', '.idea', '.vscode', 'logs', 'tmp', 'temp'
+            }
+
+            # Use os.walk for fast traversal
+            for root, dirs, files in os.walk(self.repo_path):
+                # Prune directories in-place
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+
+                for filename in files:
+                    # Check extension
+                    if not any(filename.endswith(ext) for ext in ['.js', '.ts', '.py', '.java', '.rb', '.php']):
+                        continue
+
+                    # Stop if we have enough
+                    if files_scanned >= MAX_FILES or len(handlers) >= 10:
+                        break
+
+                    file_path = Path(root) / filename
+                    cache_key = str(file_path.relative_to(self.repo_path))
+
+                    # Skip if already in cache
+                    if cache_key in self._file_content_cache:
+                        continue
+
+                    files_scanned += 1
+
+                    try:
+                        # Skip large files
+                        file_size = file_path.stat().st_size
+                        if file_size > self._max_file_size_bytes:
+                            continue
+
+                        # Read only first 100KB
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            content = f.read(self._max_read_size)
+
+                        if any(p in content for p in input_patterns):
+                            handlers.add(cache_key)
+
+                    except Exception:
+                        continue
+
+                if files_scanned >= MAX_FILES or len(handlers) >= 10:
+                    break
 
         return list(handlers)[:10]  # Top 10
 
@@ -381,7 +500,12 @@ class ThreatAnalyzer:
 
     def _should_skip_path(self, path: Path) -> bool:
         """Check if path should be skipped"""
-        skip_dirs = {'node_modules', '.git', 'vendor', 'venv', '.venv', 'dist', 'build', '__pycache__'}
+        skip_dirs = {
+            'node_modules', '.git', 'vendor', 'venv', '.venv', 'dist', 'build', '__pycache__',
+            'coverage', '.pytest_cache', '.mypy_cache', '.tox', 'htmlcov', 'site-packages',
+            'bower_components', 'jspm_packages', '.next', '.nuxt', 'out', 'target',
+            'bin', 'obj', 'packages', '.gradle', '.idea', '.vscode', 'logs', 'tmp', 'temp'
+        }
         return any(skip_dir in path.parts for skip_dir in skip_dirs)
 
     def generate_mermaid_diagram(self, threat_model: Dict) -> str:

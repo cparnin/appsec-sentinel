@@ -175,23 +175,36 @@ class CrossFileAnalyzer:
             List of AttackChain objects representing cross-file vulnerabilities
         """
         logger.info(f"⚔️ Searching for attack chains (type: {vulnerability_type or 'all'})")
-        
+
         attack_chains = []
-        
+        MAX_CHAINS_TO_COLLECT = 500  # Collect more to ensure we get critical ones
+        MAX_CHAINS_TO_RETURN = 100   # Return top 100 most severe
+
         # For each entry point, trace to each sensitive sink
         for entry_point in self.entry_points:
             for sink in self.sensitive_sinks:
+                # Stop collecting if we have enough samples
+                if len(attack_chains) >= MAX_CHAINS_TO_COLLECT:
+                    logger.info(f"⚔️ Collected {MAX_CHAINS_TO_COLLECT} attack chains for analysis")
+                    break
+
                 chains = self._find_attack_chains_between(entry_point, sink, vulnerability_type)
-                attack_chains.extend(chains)
-        
-        # Sort by severity and business impact
+                attack_chains.extend(chains[:MAX_CHAINS_TO_COLLECT - len(attack_chains)])
+
+            # Break outer loop too
+            if len(attack_chains) >= MAX_CHAINS_TO_COLLECT:
+                break
+
+        # Sort ALL chains by severity and business impact to get the most critical ones
         attack_chains.sort(key=lambda x: (
             0 if x.severity == 'critical' else 1 if x.severity == 'high' else 2,
             0 if 'high' in x.business_impact.lower() else 1
         ))
-        
-        logger.info(f"⚔️ Found {len(attack_chains)} potential attack chains")
-        return attack_chains
+
+        # Return TOP 100 most severe chains
+        top_chains = attack_chains[:MAX_CHAINS_TO_RETURN]
+        logger.info(f"⚔️ Found {len(attack_chains)} total attack chains, returning top {len(top_chains)} most severe")
+        return top_chains
     
     def assess_business_impact(self, finding: Dict[str, Any]) -> Dict[str, Any]:
         """

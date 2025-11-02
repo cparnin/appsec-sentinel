@@ -140,6 +140,16 @@ class CheckstyleScanner(QualityScannerBase):
                     except Exception as e:
                         self.logger.debug(f"Failed to normalize finding: {e}")
 
+            # Limit code quality findings to top 100 most severe
+            # Sort by severity (high > medium > low)
+            severity_order = {'high': 0, 'medium': 1, 'low': 2}
+            findings.sort(key=lambda f: severity_order.get(f.get('severity', 'low'), 2))
+
+            MAX_CODE_QUALITY_FINDINGS = 100
+            if len(findings) > MAX_CODE_QUALITY_FINDINGS:
+                self.logger.info(f"⚠️  Limiting code quality findings from {len(findings)} to top {MAX_CODE_QUALITY_FINDINGS} most severe")
+                findings = findings[:MAX_CODE_QUALITY_FINDINGS]
+
             return findings
 
         except Exception as e:

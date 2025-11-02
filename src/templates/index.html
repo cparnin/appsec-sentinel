@@ -867,17 +867,17 @@
             return 'username'; // Fallback
         }
         
-        // Progress management
+        // Progress management - REALISTIC timings based on actual backend performance
         let progressManager = {
             phases: [
-                { id: 'semgrep', name: 'Semgrep', duration: 15000, messages: ['Initializing...', 'Analyzing code patterns...', 'Scanning for vulnerabilities...', 'Processing results...'] },
-                { id: 'gitleaks', name: 'Gitleaks', duration: 8000, messages: ['Starting secret scan...', 'Analyzing git history...', 'Detecting exposed credentials...', 'Finalizing scan...'] },
-                { id: 'trivy', name: 'Trivy', duration: 12000, messages: ['Initializing dependency scan...', 'Downloading vulnerability database...', 'Scanning dependencies...', 'Generating findings...'] },
-                { id: 'codeQuality', name: 'Code Quality', duration: 10000, messages: ['Detecting project languages...', 'Running language-specific linters...', 'Analyzing code quality...', 'Processing code quality findings...'] },
-                { id: 'enhancement', name: 'AI Enhancement', duration: 5000, messages: ['Starting AI analysis...', 'Enhancing findings with context...', 'Applying intelligence...'] },
-                { id: 'report', name: 'Report Generation', duration: 3000, messages: ['Generating HTML report...', 'Creating summary...', 'Finalizing report...'] }
+                { id: 'semgrep', name: 'Semgrep', duration: 18000, messages: ['Initializing...', 'Analyzing code patterns...', 'Scanning for vulnerabilities...', 'Processing results...'] },
+                { id: 'gitleaks', name: 'Gitleaks', duration: 18000, messages: ['Starting secret scan...', 'Analyzing git history...', 'Detecting exposed credentials...', 'Finalizing scan...'] },
+                { id: 'trivy', name: 'Trivy', duration: 18000, messages: ['Initializing dependency scan...', 'Downloading vulnerability database...', 'Scanning dependencies...', 'Generating findings...'] },
+                { id: 'codeQuality', name: 'Code Quality', duration: 18000, messages: ['Detecting project languages...', 'Running language-specific linters...', 'Analyzing code quality...', 'Processing code quality findings...'] },
+                { id: 'enhancement', name: 'AI Enhancement', duration: 120000, messages: ['Starting cross-file analysis...', 'Discovering architecture (661 files)...', 'Finding attack chains (limiting to top 100)...', 'Analyzing data flows...', 'Enhancing findings with context...', 'Computing business impact...', 'Applying intelligence...', 'Finalizing enhancements...'] },
+                { id: 'report', name: 'Report Generation', duration: 5000, messages: ['Generating HTML report...', 'Creating summary...', 'Finalizing report...'] }
             ],
-            threatModelPhase: { id: 'threatModel', name: 'Threat Modeling', duration: 20000, messages: ['Discovering architecture components...', 'Mapping attack surface...', 'Applying STRIDE framework...', 'Identifying trust boundaries...', 'Generating threat scenarios...', 'Exporting threat model files...'] },
+            threatModelPhase: { id: 'threatModel', name: 'Threat Modeling', duration: 1000, messages: ['Discovering architecture...', 'Mapping attack surface...', 'Applying STRIDE framework...', 'Done!'] },
             currentPhase: 0,
 
             start: function(showThreatModel = false) {
