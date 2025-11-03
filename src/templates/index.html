@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AppSec-Sentinel</title>
+    <!-- Mermaid.js for rendering architecture diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+    </script>
     <style>
         * {
             margin: 0;
@@ -715,16 +725,68 @@
                 <div id="threatModelLinks" style="margin-top: 15px; display: none;">
                     <h3 style="margin-bottom: 10px; color: #2c3e50;">🛡️ Threat Model</h3>
                     <div class="download-buttons">
+                        <button onclick="viewArchitectureDiagram()" class="download-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; cursor: pointer;">🏗️ View Architecture Diagram</button>
                         <a href="/reports/THREAT_MODEL.md" class="download-btn">📄 Threat Report (MD)</a>
                         <a href="/reports/threat_model.json" class="download-btn">📊 Threat Model (JSON)</a>
-                        <a href="/reports/architecture.mermaid" class="download-btn">🏗️ Architecture Diagram</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Mermaid Diagram Modal -->
+    <div id="mermaidModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; padding: 20px; overflow: auto;">
+        <div style="max-width: 1200px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; position: relative;">
+            <button onclick="closeMermaidModal()" style="position: absolute; top: 15px; right: 15px; background: #e53e3e; color: white; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; font-size: 20px; line-height: 1;">×</button>
+            <h2 style="margin-bottom: 20px; color: #2c3e50;">🏗️ Architecture Diagram</h2>
+            <div id="mermaidContent" style="display: flex; justify-content: center; align-items: center; min-height: 400px;"></div>
+        </div>
+    </div>
+
     <script>
+        // Mermaid Diagram Functions
+        async function viewArchitectureDiagram() {
+            const modal = document.getElementById('mermaidModal');
+            const content = document.getElementById('mermaidContent');
+
+            try {
+                // Show loading
+                content.innerHTML = '<p style="color: #666;">Loading architecture diagram...</p>';
+                modal.style.display = 'block';
+
+                // Fetch mermaid file
+                const response = await fetch('/reports/architecture.mermaid?v=' + Date.now());
+                if (!response.ok) throw new Error('Failed to load diagram');
+
+                const mermaidText = await response.text();
+
+                // Remove ```mermaid wrapper if present
+                const cleanMermaid = mermaidText.replace(/```mermaid\n?|\n?```/g, '').trim();
+
+                // Create container for rendered diagram
+                const diagramId = 'mermaid-diagram-' + Date.now();
+                content.innerHTML = `<div id="${diagramId}" style="width: 100%;">${cleanMermaid}</div>`;
+
+                // Render with Mermaid
+                await mermaid.run({
+                    nodes: [document.getElementById(diagramId)]
+                });
+
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                content.innerHTML = '<p style="color: #e53e3e;">Failed to load architecture diagram. Make sure threat modeling has been run.</p>';
+            }
+        }
+
+        function closeMermaidModal() {
+            document.getElementById('mermaidModal').style.display = 'none';
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeMermaidModal();
+        });
+
         // Repository picker functionality
         async function setCurrentDirectory() {
             const repoInput = document.getElementById('repoPath');
@@ -1151,6 +1213,9 @@
             const downloadLinks = document.querySelectorAll('.download-btn');
             downloadLinks.forEach(link => {
                 const href = link.getAttribute('href');
+                // Skip if href is null (e.g., buttons that aren't links)
+                if (!href) return;
+
                 if (href.includes('?')) {
                     link.setAttribute('href', href.split('?')[0] + `?v=${timestamp}`);
                 } else {

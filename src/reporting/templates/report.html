@@ -405,7 +405,15 @@
         <div style="margin-bottom: 1.5rem;">
           <h4 style="margin-bottom: 1rem; color: white; opacity: 0.9;">⛓️ Cross-File Attack Chains</h4>
         {% for chain in cross_file_context_data.attack_chains %}
-          <div style="background: rgba(255,255,255,0.15); border-left: 4px solid #f56565; padding: 1rem; border-radius: 6px; margin-bottom: 0.75rem;">
+          {% set severity_colors = {
+            'critical': {'bg': 'linear-gradient(135deg, #fc8181 0%, #e53e3e 100%)', 'border': '#e53e3e'},
+            'high': {'bg': 'linear-gradient(135deg, #f6ad55 0%, #ed8936 100%)', 'border': '#ed8936'},
+            'medium': {'bg': 'linear-gradient(135deg, #f6e05e 0%, #ecc94b 100%)', 'border': '#d69e2e'},
+            'low': {'bg': 'linear-gradient(135deg, #63b3ed 0%, #4299e1 100%)', 'border': '#4299e1'}
+          } %}
+          {% set chain_severity_lower = chain.severity|lower %}
+          {% set colors = severity_colors.get(chain_severity_lower, severity_colors['medium']) %}
+          <div style="background: rgba(255,255,255,0.15); border-left: 4px solid {{ colors.border }}; padding: 1rem; border-radius: 6px; margin-bottom: 0.75rem;">
             <div style="display: flex; justify-content: between; align-items: start; gap: 1rem;">
               <div style="flex: 1;">
                 <div style="font-weight: 600; color: #fed7d7; margin-bottom: 0.25rem;">{{ chain.type|title }} Attack Chain</div>
@@ -415,15 +423,13 @@
                   <span>🔗 {{ chain.files_involved }} files</span>
                 </div>
               </div>
-              <div style="background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">{{ chain.severity }}</div>
+              <div style="background: {{ colors.bg }}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">{{ chain.severity }}</div>
             </div>
           </div>
         {% endfor %}
-          {% if cross_file_context_data.is_large_scan %}
           <div style="text-align: center; color: rgba(255,255,255,0.7); font-style: italic; margin-top: 0.5rem; background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 6px;">
-            📊 <strong>Large scan detected</strong> - Showing top {{ cross_file_context_data.max_attack_chains }} critical attack chains (compact mode)
+            📊 Showing top {{ cross_file_context_data.max_attack_chains }} most critical attack chains (sorted by severity)
           </div>
-          {% endif %}
         </div>
         {% endif %}
       

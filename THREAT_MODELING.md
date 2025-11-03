@@ -337,7 +337,7 @@ Threat modeling is optimized for speed while maintaining excellent coverage:
 - Uses intelligent caching to avoid duplicate I/O
 - Scans up to 1000 files by default (configurable via `THREAT_MODEL_MAX_FILES`)
 
-See [THREAT_MODELING_PERFORMANCE.md](./THREAT_MODELING_PERFORMANCE.md) for detailed performance tuning guidance.
+See `CLAUDE.md` for detailed performance benchmarks and optimization details.
 
 ---
 

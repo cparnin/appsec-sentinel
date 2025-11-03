@@ -76,7 +76,7 @@ def generate_html_report(findings: List[Dict[str, Any]], ai_summary: str, output
         
         # Adaptive limits based on total findings (prevent wall of text)
         is_large_scan = total_findings > 20  # Likely intentionally vulnerable repo
-        max_attack_chains = 3 if is_large_scan else 5
+        max_attack_chains = 10  # Always show top 10 most critical attack chains
         max_business_impacts = 5 if is_large_scan else 8  # Expanded from 2->5, 3->8
         
         for finding in findings:

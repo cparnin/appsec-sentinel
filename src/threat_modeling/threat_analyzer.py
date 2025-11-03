@@ -33,6 +33,43 @@ class ThreatAnalyzer:
         # Max content to read for pattern matching (first 100KB is usually enough)
         self._max_read_size = 100 * 1024  # 100KB
 
+        # Route extraction patterns (method, path)
+        self.route_patterns = {
+            'express': [
+                (r'app\.(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
+                (r'router\.(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
+            ],
+            'flask': [
+                (r'@app\.route\([\'"]([^\'"]+)[\'"].*?methods=\[(.*?)\]', 'path_methods'),
+                (r'@app\.route\([\'"]([^\'"]+)[\'"]', 'path_only'),
+            ],
+            'django': [
+                (r'path\([\'"]([^\'"]+)[\'"]', 'path_only'),
+            ],
+            'spring': [
+                (r'@RequestMapping\([\'"]([^\'"]+)[\'"]', 'path_only'),
+                (r'@(Get|Post|Put|Delete|Patch)Mapping\([\'"]([^\'"]+)[\'"]', 'method_path'),
+            ],
+            'laravel': [
+                (r'Route::(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
+            ],
+            'fastapi': [
+                (r'@app\.(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
+            ]
+        }
+
+        # Database type detection patterns
+        self.database_patterns = {
+            'PostgreSQL': ['pg', 'postgres', 'PostgreSQL', 'psycopg2', 'asyncpg'],
+            'MySQL': ['mysql', 'MySQL', 'mysqlclient', 'pymysql'],
+            'MongoDB': ['mongoose', 'mongodb', 'MongoClient', 'pymongo'],
+            'Redis': ['redis', 'Redis', 'ioredis'],
+            'SQLite': ['sqlite3', 'SQLite'],
+            'MSSQL': ['mssql', 'SQL Server', 'pyodbc', 'tedious'],
+            'Oracle': ['oracle', 'cx_Oracle', 'oracledb'],
+            'Cassandra': ['cassandra', 'pycassa'],
+        }
+
     def analyze(self, findings: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Generate comprehensive threat model
@@ -148,30 +185,41 @@ class ThreatAnalyzer:
                     cache_key = str(file_path.relative_to(self.repo_path))
                     self._file_content_cache[cache_key] = content
 
-                    # Detect frameworks
+                    # Detect frameworks and extract routes
                     for fw, patterns in frameworks.items():
                         if any(p in content for p in patterns):
                             if fw not in detected_frameworks:
                                 detected_frameworks.append(fw)
+
+                            # Extract specific routes for this framework
+                            routes = self._extract_routes(content, fw)
+                            if routes:
+                                # Store component with route details
+                                comp_name = self._get_component_name(cache_key)
                                 self.components.append({
-                                    'name': fw.title(),
-                                    'type': 'web_framework',
-                                    'file': cache_key
+                                    'name': comp_name,
+                                    'type': 'controller',
+                                    'framework': fw.title(),
+                                    'file': cache_key,
+                                    'routes': routes
                                 })
 
-                    # Detect entry points (routes, controllers, APIs)
-                    if any(p in content for p in ['@app.', 'app.get', 'app.post', 'Route::', '@RestController', '@RequestMapping']):
-                        self.entry_points.append({
-                            'file': cache_key,
-                            'type': 'http_endpoint'
-                        })
+                                # Also add to entry points with route info
+                                self.entry_points.append({
+                                    'file': cache_key,
+                                    'type': 'http_endpoint',
+                                    'framework': fw,
+                                    'routes': routes
+                                })
 
-                    # Detect data stores
-                    if any(p in content for p in ['mongoose.', 'Sequelize', 'models.Model', 'JpaRepository', 'ActiveRecord', 'PDO', 'sql.DB']):
+                    # Detect data stores with specific database types
+                    db_type = self._detect_database_type(content)
+                    if db_type or any(p in content for p in ['mongoose.', 'Sequelize', 'models.Model', 'JpaRepository', 'ActiveRecord', 'PDO', 'sql.DB']):
                         if cache_key not in [d['file'] for d in self.data_stores]:
                             self.data_stores.append({
                                 'file': cache_key,
-                                'type': 'database'
+                                'type': db_type or 'database',
+                                'name': self._extract_db_name(content)
                             })
 
                 except Exception:
@@ -498,6 +546,82 @@ class ThreatAnalyzer:
 
         return count
 
+    def _extract_routes(self, content: str, framework: str) -> List[Dict[str, str]]:
+        """Extract specific route URLs from file content"""
+        import re
+        routes = []
+
+        if framework not in self.route_patterns:
+            return routes
+
+        for pattern, pattern_type in self.route_patterns[framework]:
+            try:
+                matches = re.finditer(pattern, content, re.MULTILINE | re.IGNORECASE)
+                for match in matches:
+                    if pattern_type == 'method_path':
+                        # Groups: (method, path)
+                        method = match.group(1).upper()
+                        path = match.group(2)
+                        routes.append({'method': method, 'path': path})
+                    elif pattern_type == 'path_methods':
+                        # Groups: (path, methods)
+                        path = match.group(1)
+                        methods_str = match.group(2)
+                        # Parse methods array like ['GET', 'POST']
+                        methods = [m.strip().strip('"\'') for m in methods_str.split(',')]
+                        for method in methods:
+                            routes.append({'method': method.upper(), 'path': path})
+                    elif pattern_type == 'path_only':
+                        # Group: (path)
+                        path = match.group(1)
+                        routes.append({'method': 'ALL', 'path': path})
+            except Exception:
+                continue
+
+        # Limit to 10 routes per file to avoid overwhelming diagram
+        return routes[:10]
+
+    def _get_component_name(self, file_path: str) -> str:
+        """Extract readable component name from file path"""
+        # Get filename without extension
+        filename = file_path.split('/')[-1].rsplit('.', 1)[0]
+
+        # Remove common suffixes
+        for suffix in ['Controller', 'Service', 'Handler', 'Router', 'Routes', 'View']:
+            if filename.endswith(suffix):
+                return filename
+
+        return filename
+
+    def _detect_database_type(self, content: str) -> str:
+        """Detect database type from content"""
+        for db_type, patterns in self.database_patterns.items():
+            if any(p in content for p in patterns):
+                return db_type
+        return None
+
+    def _extract_db_name(self, content: str) -> str:
+        """Try to extract database name from connection strings"""
+        import re
+
+        # Common database name patterns in connection strings
+        patterns = [
+            r'database["\']?\s*[=:]\s*["\']([^"\']+)["\']',  # database='mydb'
+            r'db["\']?\s*[=:]\s*["\']([^"\']+)["\']',  # db: 'mydb'
+            r'/([a-zA-Z0-9_]+)(?:\?|$)',  # mongodb://localhost/mydb
+            r'Database=([^;]+)',  # SQL Server
+        ]
+
+        for pattern in patterns:
+            try:
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    return match.group(1)
+            except Exception:
+                continue
+
+        return 'default'
+
     def _should_skip_path(self, path: Path) -> bool:
         """Check if path should be skipped"""
         skip_dirs = {
@@ -508,8 +632,40 @@ class ThreatAnalyzer:
         }
         return any(skip_dir in path.parts for skip_dir in skip_dirs)
 
+    def _get_file_severity_color(self, file_path: str, threat_model: Dict) -> str:
+        """Get Mermaid styling class based on vulnerability severity in file"""
+        # Map findings to files by checking STRIDE categories
+        file_severities = []
+
+        for category, threats in threat_model.get('stride_analysis', {}).items():
+            for threat in threats:
+                # Check if this threat is related to this file
+                # (STRIDE threats don't have file paths, so this is best-effort)
+                threat_file = threat.get('finding', '').lower()
+                if file_path.lower() in threat_file or any(part in threat_file for part in file_path.split('/')):
+                    file_severities.append(threat.get('severity', 'LOW'))
+
+        # Also check threat scenarios
+        for scenario in threat_model.get('threat_scenarios', []):
+            # Scenarios might have file info in title or attack_vector
+            if file_path in str(scenario):
+                file_severities.append(scenario.get('severity', 'LOW'))
+
+        # Determine highest severity
+        if 'CRITICAL' in file_severities:
+            return 'fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px'  # Red
+        elif 'HIGH' in file_severities:
+            return 'fill:#ffa94d,stroke:#e67700,stroke-width:2px'  # Orange
+        elif 'MEDIUM' in file_severities:
+            return 'fill:#ffe066,stroke:#e8b600,stroke-width:2px'  # Yellow
+        elif 'LOW' in file_severities:
+            return 'fill:#74c0fc,stroke:#339af0,stroke-width:1px'  # Blue
+
+        # No vulnerabilities detected in this file
+        return 'fill:#d3f9d8,stroke:#51cf66,stroke-width:1px'  # Green
+
     def generate_mermaid_diagram(self, threat_model: Dict) -> str:
-        """Generate Mermaid architecture diagram"""
+        """Generate enhanced Mermaid architecture diagram with specific details"""
 
         lines = [
             "```mermaid",
@@ -517,39 +673,135 @@ class ThreatAnalyzer:
             "    User[External User]",
         ]
 
-        # Add components
+        # Add components with specific details
         components = threat_model['architecture']['components']
-        for i, comp in enumerate(components):
-            comp_id = f"C{i}"
-            lines.append(f"    {comp_id}[{comp['name']}]")
+        entry_points = threat_model['architecture']['entry_points']
 
-        # Add data stores
-        for i, ds in enumerate(threat_model['architecture']['data_stores']):
+        # Group components by framework for better organization
+        framework_components = defaultdict(list)
+        for comp in components:
+            framework = comp.get('framework', 'Application')
+            framework_components[framework].append(comp)
+
+        # Create component nodes with route information
+        comp_id_map = {}
+        comp_counter = 0
+
+        for framework, comps in framework_components.items():
+            for comp in comps[:5]:  # Limit to 5 per framework to avoid clutter
+                comp_id = f"C{comp_counter}"
+                comp_id_map[comp['file']] = comp_id
+
+                # Build component label with routes
+                label = f"{comp['name']}"
+                if 'routes' in comp and comp['routes']:
+                    # Show first 3 routes
+                    route_strs = []
+                    for route in comp['routes'][:3]:
+                        route_str = f"{route.get('method', 'ALL')} {route.get('path', '/')}"
+                        route_strs.append(route_str)
+                    routes_display = '<br/>'.join(route_strs)
+                    label = f"{comp['name']}<br/><small>{routes_display}</small>"
+
+                # Shorten file path for display
+                file_short = '/'.join(comp['file'].split('/')[-2:])
+                label = f"{comp['name']}<br/><small>{file_short}</small>"
+
+                lines.append(f"    {comp_id}[\"{label}\"]")
+                comp_counter += 1
+
+        # Add data stores with specific database types
+        data_stores = threat_model['architecture']['data_stores']
+        db_id_map = {}
+
+        for i, ds in enumerate(data_stores[:5]):  # Limit to 5 databases
             ds_id = f"DB{i}"
-            lines.append(f"    {ds_id}[(Database)]")
+            db_id_map[ds['file']] = ds_id
 
-        # Add connections
-        if components:
-            lines.append(f"    User -->|HTTP Request| C0")
+            # Use specific database type
+            db_type = ds.get('type', 'Database')
+            db_name = ds.get('name', 'default')
 
-        if threat_model['architecture']['data_stores']:
-            lines.append(f"    C0 -->|Query| DB0")
+            # Create descriptive label
+            if db_name and db_name != 'default':
+                label = f"{db_type}<br/>{db_name}"
+            else:
+                label = db_type
 
-        # Add trust boundaries
+            lines.append(f"    {ds_id}[(\"{label}\")]")
+
+        # Add connections from user to endpoints
+        lines.append("")
+        lines.append("    %% User requests to endpoints")
+
+        # Connect user to each unique component
+        added_connections = set()
+        for ep in entry_points[:10]:  # Limit to 10 entry points
+            comp_file = ep['file']
+            if comp_file in comp_id_map:
+                comp_id = comp_id_map[comp_file]
+                if comp_id not in added_connections:
+                    # Show route info on connection if available
+                    if 'routes' in ep and ep['routes']:
+                        route = ep['routes'][0]  # Show first route
+                        method = route.get('method', 'HTTP')
+                        path = route.get('path', '/')
+                        lines.append(f"    User -->|{method} {path}| {comp_id}")
+                    else:
+                        lines.append(f"    User -->|HTTP Request| {comp_id}")
+                    added_connections.add(comp_id)
+
+        # Connect components to databases
+        if comp_id_map and db_id_map:
+            lines.append("")
+            lines.append("    %% Component to database connections")
+            # Connect first few components to first database (simplified)
+            for comp_id in list(comp_id_map.values())[:3]:
+                for db_id in list(db_id_map.values())[:1]:
+                    lines.append(f"    {comp_id} -->|Query| {db_id}")
+
+        # Add trust boundaries with components
         lines.append("")
         lines.append("    subgraph TB1[Trust Boundary: Internet]")
         lines.append("        User")
         lines.append("    end")
         lines.append("")
-        lines.append("    subgraph TB2[Trust Boundary: Application]")
-        if components:
-            lines.append("        C0")
-        lines.append("    end")
-        lines.append("")
-        if threat_model['architecture']['data_stores']:
-            lines.append("    subgraph TB3[Trust Boundary: Data Layer]")
-            lines.append("        DB0")
+
+        if comp_id_map:
+            lines.append("    subgraph TB2[Trust Boundary: Application]")
+            for comp_id in comp_id_map.values():
+                lines.append(f"        {comp_id}")
             lines.append("    end")
+            lines.append("")
+
+        if db_id_map:
+            lines.append("    subgraph TB3[Trust Boundary: Data Layer]")
+            for db_id in db_id_map.values():
+                lines.append(f"        {db_id}")
+            lines.append("    end")
+
+        # Apply vulnerability severity styling to components
+        lines.append("")
+        lines.append("    %% Vulnerability severity styling")
+        for file_path, comp_id in comp_id_map.items():
+            style = self._get_file_severity_color(file_path, threat_model)
+            lines.append(f"    style {comp_id} {style}")
+
+        # Style databases as neutral
+        for db_id in db_id_map.values():
+            lines.append(f"    style {db_id} fill:#e7f5ff,stroke:#1971c2,stroke-width:2px")
+
+        # Style user as external entity
+        lines.append(f"    style User fill:#fff3bf,stroke:#f59f00,stroke-width:2px")
+
+        # Add legend/note about color coding
+        lines.append("")
+        lines.append("    %% Legend:")
+        lines.append("    %% Red = Critical vulnerabilities")
+        lines.append("    %% Orange = High severity")
+        lines.append("    %% Yellow = Medium severity")
+        lines.append("    %% Blue = Low severity")
+        lines.append("    %% Green = No vulnerabilities detected")
 
         lines.append("```")
 
