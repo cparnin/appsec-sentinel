@@ -260,21 +260,30 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 
 ## FAQ
 
-**Q: What's the MCP "custom" server doing?**
+**Q: Is AI-generated code safe to merge?**
 
-A: Exposes 6 security tools to Claude Desktop - domain-specific security functions (scan, analyze attack chains, auto-remediate, generate SBOM). Enables conversational security analysis.
+A: All fixes require manual review via PR. We use deterministic AI (temperature=0.0) and only fix proven patterns (SQL injection, XSS, hardcoded secrets). Your existing tests validate changes. Separate PRs for code vs dependencies minimize risk. ~80% of fixes are production-ready after quick review.
 
-**Q: How do I trust AI-generated fixes?**
+**Q: What data gets sent to AI providers?**
 
-A: PRs require manual review before merge. Separate PRs for code fixes vs dependencies. Conservative patterns only (SQLi, XSS, input validation). Your tests still validate. 70-80% are safe after quick review.
+A: Only vulnerability metadata (file path, line number, vulnerability type, code snippet). **Never** your full codebase. Secrets are flagged locally and **never** sent to AI. You control which findings trigger AI analysis.
 
-**Q: What data goes to the AI provider?**
+**Q: Which mode should I use?**
 
-A: Vulnerability metadata, file names, line numbers, code snippets. Never full codebases. Secrets flagged locally, never sent to AI.
+- **GitHub Actions** - Automated security in CI/CD (scans every PR)
+- **Web UI** - Visual reports for teams and management
+- **CLI** - Deep-dive analysis for security consultants
+- **MCP** - Conversational security with Claude Desktop
 
-**Q: GitHub Actions vs MCP vs CLI vs Web?**
+All modes use the same scanning engine. Choose based on your workflow.
 
-A: Actions = automated PR scans. MCP = conversational analysis with Claude. CLI = consultant deep-dive. Web = team reports. Use what fits your workflow.
+**Q: Do I need to install linters for code quality?**
+
+A: No - security scanning works without any linters. Code quality is **optional** and gracefully skips if tools aren't installed. Install linters (ESLint, Pylint, etc.) only if you want code smell detection. Set `APPSEC_CODE_QUALITY=false` to disable entirely.
+
+**Q: How is this different from other security scanners?**
+
+A: **Cross-file attack chain detection** - we trace vulnerabilities across multiple files and languages using AST analysis, not just single-file pattern matching. Plus automated threat modeling (STRIDE), AI-powered fixes, and zero-config SBOM generation.
 
 ## Development
 
