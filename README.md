@@ -285,6 +285,10 @@ A: No - security scanning works without any linters. Code quality is **optional*
 
 A: **Cross-file attack chain detection** - we trace vulnerabilities across multiple files and languages using AST analysis, not just single-file pattern matching. Plus automated threat modeling (STRIDE), AI-powered fixes, and zero-config SBOM generation.
 
+**Q: What does automated threat modeling do?**
+
+A: Generates STRIDE threat analysis, architecture diagrams, and attack surface assessment. **What it does:** Extracts real routes (GET /api/users), detects database types (PostgreSQL, MongoDB), maps components with file paths, color-codes vulnerabilities by severity, identifies trust boundaries. **What it can't do:** Doesn't replace manual threat modeling by security architects. Framework support varies - full route extraction for Express, Flask, Django, Spring, Laravel, FastAPI. Partial support for Rails, Go, Rust (generic endpoints only). No C#/Kotlin support yet. See [THREAT_MODELING.md](THREAT_MODELING.md) for details.
+
 ## Development
 
 ```bash
