@@ -260,10 +260,6 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 
 ## FAQ
 
-**Q: What makes this different from Snyk/SonarQube?**
-
-A: Cross-file attack chain detection. We trace vulnerabilities across multiple files and languages - not just single-file patterns. Plus conversational security analysis via MCP.
-
 **Q: What's the MCP "custom" server doing?**
 
 A: Exposes 6 security tools to Claude Desktop - domain-specific security functions (scan, analyze attack chains, auto-remediate, generate SBOM). Enables conversational security analysis.
@@ -279,14 +275,6 @@ A: Vulnerability metadata, file names, line numbers, code snippets. Never full c
 **Q: GitHub Actions vs MCP vs CLI vs Web?**
 
 A: Actions = automated PR scans. MCP = conversational analysis with Claude. CLI = consultant deep-dive. Web = team reports. Use what fits your workflow.
-
-**Q: Does this replace existing scanners?**
-
-A: No, it complements them. AppSec-Sentinel includes both security and code quality scanning (via Semgrep). Code quality findings are always shown regardless of scan level. You can keep Snyk for license compliance. AppSec-Sentinel provides cross-file analysis and AI remediation.
-
-**Q: Can I use results from Snyk/Veracode/etc?**
-
-A: Yes. Export to JSON → place in `projects/project_exports/` → run `python src/tool_ingestion.py`. AppSec-Sentinel enhances their findings with cross-file analysis and AI context.
 
 ## Development
 
