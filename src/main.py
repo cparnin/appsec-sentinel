@@ -107,13 +107,7 @@ try:
 except ImportError:
     PHPSTAN_AVAILABLE = False
 
-# Configure logging for minimal output
-logging.basicConfig(
-    level=logging.ERROR,  # Only show errors
-    format='%(message)s'  # Simple format
-)
-
-# Reduce noise from all libraries and scanners
+# Reduce noise from all libraries and scanners (setup_logging already called at line 35)
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("anthropic").setLevel(logging.ERROR)
@@ -1064,6 +1058,289 @@ def handle_auto_remediation(repo_path: str, all_findings: List[Dict[str, Any]], 
         print("\n💡 No auto-fixable vulnerabilities found in this scan.")
         return {"success": True, "message": "No auto-fixable vulnerabilities found"}
 
+def run_security_scan_mode(repo_path: str) -> None:
+    """
+    Execute security scan mode (interactive menu choice 1).
+
+    Args:
+        repo_path: Path to repository to scan
+    """
+    from scanners.validation import detect_languages
+
+    # Set up output directory with new repo/branch structure
+    output_path = get_output_path(repo_path, BASE_OUTPUT_DIR)
+    cleanup_old_scans(output_path)
+    output_dirs = setup_output_directories(output_path)
+    output_dir = output_dirs['base']
+
+    print(f"📁 Output directory: {output_dir}")
+
+    # Let user choose tools to run
+    selected_tools = select_tools()
+    scan_level = select_scan_level()
+
+    # Convert tool selection to scanner list (security scanners only)
+    scanners_to_run = []
+    if 'semgrep' in selected_tools:
+        scanners_to_run.append('semgrep')
+    if 'gitleaks' in selected_tools:
+        scanners_to_run.append('gitleaks')
+    if 'trivy' in selected_tools:
+        scanners_to_run.append('trivy')
+
+    # Code quality and SBOM are handled separately
+    run_code_quality = 'code_quality' in selected_tools
+    run_sbom = 'sbom' in selected_tools
+
+    # Temporarily override APPSEC_CODE_QUALITY for this scan (with proper cleanup)
+    original_code_quality = os.getenv('APPSEC_CODE_QUALITY')
+    try:
+        os.environ['APPSEC_CODE_QUALITY'] = 'true' if run_code_quality else 'false'
+
+        print(f"\n🔍 Running security scan (level: {scan_level})...")
+        all_findings = run_security_scans(repo_path, scanners_to_run, output_dir, scan_level)
+    finally:
+        # Restore original code quality setting (always runs, even on exception)
+        if original_code_quality is not None:
+            os.environ['APPSEC_CODE_QUALITY'] = original_code_quality
+        else:
+            os.environ.pop('APPSEC_CODE_QUALITY', None)
+
+    # Generate reports with cross-file enhancement
+    try:
+        print("📊 Generating reports...")
+
+        # Enhance findings with cross-file analysis first
+        enhanced_findings = all_findings
+        context_summary = ""
+
+        if CROSS_FILE_AVAILABLE and all_findings:
+            print("🧠 Running cross-file enhancement analysis...")
+            try:
+                from enhanced_analyzer import enhance_findings_with_cross_file
+                enhanced_findings = asyncio.run(enhance_findings_with_cross_file(all_findings, repo_path))
+                context_summary = ""  # Remove from AI summary
+                print(f"✅ Enhanced {len(enhanced_findings)} findings with cross-file analysis")
+            except Exception as e:
+                logger.warning(f"Cross-file enhancement failed, using standard analysis: {e}")
+                enhanced_findings = all_findings
+
+        # Generate AI summary with cross-file insights
+        if enhanced_findings:
+            # Separate security from code quality findings
+            security_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') != 'code_quality']
+            code_quality_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') == 'code_quality']
+
+            summary_stats = {
+                'total_security': len(security_findings),
+                'total_code_quality': len(code_quality_findings),
+                'critical': len([f for f in security_findings if f.get('severity', '').lower() == 'critical']),
+                'high': len([f for f in security_findings if f.get('severity', '').lower() in ['high', 'error']]),
+                'sast': len([f for f in security_findings if f.get('tool') == 'semgrep']),
+                'secrets': len([f for f in security_findings if f.get('tool') == 'gitleaks']),
+                'deps': len([f for f in security_findings if f.get('tool') == 'trivy'])
+            }
+
+            # Build security findings section
+            security_breakdown = f"""**Security Issues ({summary_stats['total_security']} total):**
+• {summary_stats['critical']} critical vulnerabilities requiring immediate attention
+• {summary_stats['high']} high-severity issues needing prompt remediation
+• {summary_stats['sast']} code security issues (SAST)
+• {summary_stats['secrets']} secrets detected in repository
+• {summary_stats['deps']} vulnerable dependencies identified"""
+
+            # Add code quality section if present
+            code_quality_section = ""
+            if summary_stats['total_code_quality'] > 0:
+                code_quality_section = f"""
+
+**Code Quality Issues ({summary_stats['total_code_quality']} total):**
+• Maintainability, complexity, and best practice violations
+• Always shown regardless of security scan level"""
+
+            ai_summary = f"""🛡️ Security Analysis Complete
+
+**Risk Assessment:** {'🔴 High Risk' if summary_stats['critical'] > 0 else '🟡 Medium Risk' if summary_stats['high'] > 0 else '🟢 Low Risk'}
+
+{security_breakdown}{code_quality_section}{context_summary}
+
+**Recommended Actions:**
+1. Prioritize critical vulnerabilities for immediate patching
+2. Review and rotate any exposed secrets
+3. Update vulnerable dependencies to latest secure versions
+4. Implement security code review practices"""
+        else:
+            ai_summary = "🎉 Security scan completed successfully with no critical or high-severity issues found."
+
+        try:
+            generate_html_report(enhanced_findings, ai_summary, str(output_dir), str(repo_path), detect_languages(Path(repo_path)))
+            html_report_path = output_dir / "report.html"
+            print(f"📄 HTML report: {html_report_path}")
+        except Exception as report_error:
+            print(f"⚠️  HTML report generation failed: {report_error}")
+            logger.error(f"HTML report error: {report_error}", exc_info=True)
+
+        # Generate cross-file enhanced reports if available
+        if CROSS_FILE_AVAILABLE and enhanced_findings:
+            try:
+                from enhanced_analyzer import generate_cross_file_enhanced_report
+                enhanced_report = asyncio.run(generate_cross_file_enhanced_report(enhanced_findings, repo_path))
+
+                # Create PR findings summary
+                pr_summary_path = output_dir / "pr-findings.txt"
+
+                with open(pr_summary_path, 'w') as f:
+                    f.write(enhanced_report.get('pr_summary', 'No PR summary available'))
+
+                print(f"📄 cross-file enhanced PR summary: {pr_summary_path}")
+            except Exception as e:
+                logger.warning(f"cross-file report generation failed: {e}")
+    except Exception as e:
+        print(f"⚠️  Report generation failed: {e}")
+        logger.error(f"Report generation error: {e}", exc_info=True)
+
+    # Generate SBOM if user selected it
+    if run_sbom and SBOM_AVAILABLE:
+        print("📋 Generating SBOM for compliance...")
+        try:
+            asyncio.run(generate_repository_sbom(repo_path, str(output_dir / "sbom")))
+            print("✅ SBOM generated in outputs/sbom/")
+        except Exception as e:
+            logger.warning(f"SBOM generation failed: {e}")
+            print("⚠️ SBOM generation failed (scan continues)")
+    elif run_sbom and not SBOM_AVAILABLE:
+        print("⚠️ SBOM generation requires Syft but it's not installed")
+
+    # Handle auto-remediation for findings
+    logger.info("🔧 Starting handle_auto_remediation from main choice 1")
+    handle_auto_remediation(repo_path, enhanced_findings)
+    logger.info("✅ Completed handle_auto_remediation from main choice 1")
+
+
+def run_tool_ingestion_mode() -> None:
+    """
+    Execute tool ingestion mode (interactive menu choice 2).
+    Enhances existing project tool results.
+    """
+    if TOOL_INGESTION_AVAILABLE:
+        if Path("projects/project_exports").exists():
+            print("🔄 Enhancing project tool results...")
+            asyncio.run(ingest_project_tools())
+            print("✅ Enhanced results available in outputs/")
+        else:
+            print("❌ No projects/project_exports/ directory found. Place tool exports there first.")
+    else:
+        print("❌ Tool ingestion not available")
+
+
+def run_threat_modeling_mode() -> None:
+    """
+    Execute threat modeling mode (interactive menu choice 3).
+    Generates STRIDE threat analysis for a repository.
+    """
+    print("\n🛡️  Generating Threat Model (STRIDE Analysis)...")
+
+    try:
+        from threat_modeling import ThreatAnalyzer
+
+        # Select repository
+        repo_path = select_repository()
+        if not repo_path:
+            return
+
+        # Set up output directory with repo/branch structure
+        output_path = get_output_path(repo_path, BASE_OUTPUT_DIR)
+        output_dirs = setup_output_directories(output_path)
+        output_dir = output_dirs['base']
+
+        print(f"📁 Output directory: {output_dir}")
+
+        # Create progress bar for threat modeling
+        console = Console()
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            console=console,
+            transient=False
+        ) as progress:
+            # Define threat modeling stages
+            stages = [
+                ("🔍 Discovering architecture components", 20),
+                ("📊 Mapping attack surface", 15),
+                ("🎯 Applying STRIDE framework", 25),
+                ("🔒 Identifying trust boundaries", 10),
+                ("⚠️  Generating threat scenarios", 20),
+                ("📝 Exporting threat model files", 10)
+            ]
+
+            total_steps = sum(weight for _, weight in stages)
+            task = progress.add_task("[cyan]Threat modeling in progress...", total=total_steps)
+
+            # Stage 1: Check for existing scan results and discover architecture
+            progress.update(task, description=stages[0][0])
+            findings = []
+            raw_dir = output_dir / "raw"
+            if raw_dir.exists():
+                console.print("📊 Loading existing scan results for enhanced analysis...")
+                for json_file in raw_dir.glob("*.json"):
+                    try:
+                        with open(json_file) as f:
+                            data = json.load(f)
+                            if isinstance(data, dict) and 'results' in data:
+                                findings.extend(data['results'])
+                            elif isinstance(data, list):
+                                findings.extend(data)
+                    except Exception as e:
+                        logger.debug(f"Could not load {json_file}: {e}")
+
+            analyzer = ThreatAnalyzer(repo_path)
+            time.sleep(0.5)  # Brief pause for visual feedback
+            progress.advance(task, stages[0][1])
+
+            # Stage 2-5: Generate threat model (combines architecture, attack surface, STRIDE, boundaries, scenarios)
+            for i in range(1, 5):
+                progress.update(task, description=stages[i][0])
+                if i == 1:
+                    # Start the actual analysis
+                    pass
+                time.sleep(0.3)  # Brief pause for visual feedback
+                progress.advance(task, stages[i][1])
+
+            # Run the actual threat model generation
+            threat_model = analyzer.analyze(findings)
+
+            # Stage 6: Export files
+            progress.update(task, description=stages[5][0])
+            exported_files = analyzer.export_threat_model(threat_model, str(output_dir))
+            progress.advance(task, stages[5][1])
+
+        # Display summary
+        summary = threat_model['summary']
+        print(f"\n✅ Threat Model Generated!")
+        print(f"   • Total Threats: {summary['total_threats']}")
+        print(f"   • Attack Surface Risk: {summary['attack_surface_score']}")
+        print(f"   • Overall Risk Level: {summary['risk_level']}")
+        print(f"\n📄 Reports generated:")
+        print(f"   • JSON: {exported_files['json']}")
+        print(f"   • Markdown: {exported_files['markdown']}")
+        print(f"   • Diagram: {exported_files['diagram']}")
+
+        # Show STRIDE breakdown
+        print(f"\n🎯 STRIDE Threat Breakdown:")
+        for category, count in summary['stride_breakdown'].items():
+            if count > 0:
+                print(f"   • {category.replace('_', ' ')}: {count}")
+
+    except ImportError:
+        print("❌ Threat modeling module not available")
+        logger.error("Failed to import threat_modeling module")
+    except Exception as e:
+        print(f"❌ Threat model generation failed: {e}")
+        logger.error(f"Threat modeling error: {e}", exc_info=True)
+
+
 def track_usage() -> None:
     """
     Track usage analytics for IP monitoring while repository is public.
@@ -1072,11 +1349,11 @@ def track_usage() -> None:
     try:
         import platform
         import getpass
-        from datetime import datetime
-        
+        from datetime import datetime, timezone
+
         # Collect basic usage metrics (no sensitive data)
         usage_data = {
-            'timestamp': datetime.now(datetime.UTC).isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'version': '1.3.0',
             'mode': 'CI/CD' if is_github_actions() else 'CLI',
             'platform': platform.system(),
@@ -1152,291 +1429,26 @@ def main() -> None:
     try:
         # Show menu and get user choice
         choice = show_interactive_menu()
-        
+
         if choice == 'q':
             print("👋 Goodbye!")
             return
-        
+
         # Execute based on choice
         if choice == '1':
             # Security scan with auto-fixes (needs repo selection)
             repo_path = select_repository()
             if not repo_path:
                 return
-
-            # Set up output directory with new repo/branch structure
-            output_path = get_output_path(repo_path, BASE_OUTPUT_DIR)
-
-            # Clean up old scans (keep only most recent)
-            cleanup_old_scans(output_path)
-
-            # Set up directory structure
-            output_dirs = setup_output_directories(output_path)
-            output_dir = output_dirs['base']
-
-            print(f"📁 Output directory: {output_dir}")
-
-            # Let user choose tools to run
-            selected_tools = select_tools()
-
-            # Let user choose severity level
-            scan_level = select_scan_level()
-
-            # Convert tool selection to scanner list (security scanners only)
-            scanners_to_run = []
-            if 'semgrep' in selected_tools:
-                scanners_to_run.append('semgrep')
-            if 'gitleaks' in selected_tools:
-                scanners_to_run.append('gitleaks')
-            if 'trivy' in selected_tools:
-                scanners_to_run.append('trivy')
-
-            # Code quality and SBOM are handled separately
-            run_code_quality = 'code_quality' in selected_tools
-            run_sbom = 'sbom' in selected_tools
-
-            # Temporarily override APPSEC_CODE_QUALITY for this scan (with proper cleanup)
-            original_code_quality = os.getenv('APPSEC_CODE_QUALITY')
-            try:
-                os.environ['APPSEC_CODE_QUALITY'] = 'true' if run_code_quality else 'false'
-
-                print(f"\n🔍 Running security scan (level: {scan_level})...")
-                all_findings = run_security_scans(repo_path, scanners_to_run, output_dir, scan_level)
-            finally:
-                # Restore original code quality setting (always runs, even on exception)
-                if original_code_quality is not None:
-                    os.environ['APPSEC_CODE_QUALITY'] = original_code_quality
-                else:
-                    os.environ.pop('APPSEC_CODE_QUALITY', None)
-            
-            # Generate reports with cross-file enhancement
-            try:
-                print("📊 Generating reports...")
-                
-                # Enhance findings with cross-file analysis first
-                enhanced_findings = all_findings
-                context_summary = ""
-                
-                if CROSS_FILE_AVAILABLE and all_findings:
-                    print("🧠 Running cross-file enhancement analysis...")
-                    try:
-                        from enhanced_analyzer import enhance_findings_with_cross_file
-                        enhanced_findings = asyncio.run(enhance_findings_with_cross_file(all_findings, repo_path))
-                        
-                        # Context will be shown in the detailed section instead
-                        context_summary = ""  # Remove from AI summary
-                        
-                        print(f"✅ Enhanced {len(enhanced_findings)} findings with cross-file analysis")
-                    except Exception as e:
-                        logger.warning(f"Cross-file enhancement failed, using standard analysis: {e}")
-                        enhanced_findings = all_findings
-                
-                # Generate AI summary with cross-file insights
-                if enhanced_findings:
-                    # Separate security from code quality findings
-                    security_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') != 'code_quality']
-                    code_quality_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') == 'code_quality']
-
-                    summary_stats = {
-                        'total_security': len(security_findings),
-                        'total_code_quality': len(code_quality_findings),
-                        'critical': len([f for f in security_findings if f.get('severity', '').lower() == 'critical']),
-                        'high': len([f for f in security_findings if f.get('severity', '').lower() in ['high', 'error']]),
-                        'sast': len([f for f in security_findings if f.get('tool') == 'semgrep']),
-                        'secrets': len([f for f in security_findings if f.get('tool') == 'gitleaks']),
-                        'deps': len([f for f in security_findings if f.get('tool') == 'trivy'])
-                    }
-
-                    # Build security findings section
-                    security_breakdown = f"""**Security Issues ({summary_stats['total_security']} total):**
-• {summary_stats['critical']} critical vulnerabilities requiring immediate attention
-• {summary_stats['high']} high-severity issues needing prompt remediation
-• {summary_stats['sast']} code security issues (SAST)
-• {summary_stats['secrets']} secrets detected in repository
-• {summary_stats['deps']} vulnerable dependencies identified"""
-
-                    # Add code quality section if present
-                    code_quality_section = ""
-                    if summary_stats['total_code_quality'] > 0:
-                        code_quality_section = f"""
-
-**Code Quality Issues ({summary_stats['total_code_quality']} total):**
-• Maintainability, complexity, and best practice violations
-• Always shown regardless of security scan level"""
-
-                    ai_summary = f"""🛡️ Security Analysis Complete
-
-**Risk Assessment:** {'🔴 High Risk' if summary_stats['critical'] > 0 else '🟡 Medium Risk' if summary_stats['high'] > 0 else '🟢 Low Risk'}
-
-{security_breakdown}{code_quality_section}{context_summary}
-
-**Recommended Actions:**
-1. Prioritize critical vulnerabilities for immediate patching
-2. Review and rotate any exposed secrets
-3. Update vulnerable dependencies to latest secure versions
-4. Implement security code review practices"""
-                else:
-                    ai_summary = "🎉 Security scan completed successfully with no critical or high-severity issues found."
-                    
-                try:
-                    generate_html_report(enhanced_findings, ai_summary, str(output_dir), str(repo_path), detect_languages(Path(repo_path)))
-                    html_report_path = output_dir / "report.html"
-                    print(f"📄 HTML report: {html_report_path}")
-                except Exception as report_error:
-                    print(f"⚠️  HTML report generation failed: {report_error}")
-                    logger.error(f"HTML report error: {report_error}", exc_info=True)
-
-                # Generate cross-file enhanced reports if available
-                if CROSS_FILE_AVAILABLE and enhanced_findings:
-                    try:
-                        from enhanced_analyzer import generate_cross_file_enhanced_report
-                        enhanced_report = asyncio.run(generate_cross_file_enhanced_report(enhanced_findings, repo_path))
-
-                        # Create PR findings summary
-                        pr_summary_path = output_dir / "pr-findings.txt"
-
-                        with open(pr_summary_path, 'w') as f:
-                            f.write(enhanced_report.get('pr_summary', 'No PR summary available'))
-
-                        print(f"📄 cross-file enhanced PR summary: {pr_summary_path}")
-                    except Exception as e:
-                        logger.warning(f"cross-file report generation failed: {e}")
-            except Exception as e:
-                print(f"⚠️  Report generation failed: {e}")
-                logger.error(f"Report generation error: {e}", exc_info=True)
-            
-            # Generate SBOM if user selected it
-            if run_sbom and SBOM_AVAILABLE:
-                print("📋 Generating SBOM for compliance...")
-                try:
-                    asyncio.run(generate_repository_sbom(repo_path, str(output_dir / "sbom")))
-                    print("✅ SBOM generated in outputs/sbom/")
-                except Exception as e:
-                    logger.warning(f"SBOM generation failed: {e}")
-                    print("⚠️ SBOM generation failed (scan continues)")
-            elif run_sbom and not SBOM_AVAILABLE:
-                print("⚠️ SBOM generation requires Syft but it's not installed")
-
-            # Handle auto-remediation for findings
-            logger.info("🔧 Starting handle_auto_remediation from main choice 1")
-            handle_auto_remediation(repo_path, enhanced_findings)
-            logger.info("✅ Completed handle_auto_remediation from main choice 1")
+            run_security_scan_mode(repo_path)
 
         elif choice == '2':
             # Enhance project tool results (works on current directory exports)
-            if TOOL_INGESTION_AVAILABLE:
-                if Path("projects/project_exports").exists():
-                    print("🔄 Enhancing project tool results...")
-                    asyncio.run(ingest_project_tools())
-                    print("✅ Enhanced results available in outputs/")
-                else:
-                    print("❌ No projects/project_exports/ directory found. Place tool exports there first.")
-            else:
-                print("❌ Tool ingestion not available")
+            run_tool_ingestion_mode()
 
         elif choice == '3':
             # Generate threat model
-            print("\n🛡️  Generating Threat Model (STRIDE Analysis)...")
-
-            try:
-                from threat_modeling import ThreatAnalyzer
-
-                # Select repository
-                repo_path = select_repository()
-                if not repo_path:
-                    return
-
-                # Set up output directory with repo/branch structure
-                output_path = get_output_path(repo_path, BASE_OUTPUT_DIR)
-                output_dirs = setup_output_directories(output_path)
-                output_dir = output_dirs['base']
-
-                print(f"📁 Output directory: {output_dir}")
-
-                # Create progress bar for threat modeling
-                console = Console()
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                    console=console,
-                    transient=False
-                ) as progress:
-                    # Define threat modeling stages
-                    stages = [
-                        ("🔍 Discovering architecture components", 20),
-                        ("📊 Mapping attack surface", 15),
-                        ("🎯 Applying STRIDE framework", 25),
-                        ("🔒 Identifying trust boundaries", 10),
-                        ("⚠️  Generating threat scenarios", 20),
-                        ("📝 Exporting threat model files", 10)
-                    ]
-
-                    total_steps = sum(weight for _, weight in stages)
-                    task = progress.add_task("[cyan]Threat modeling in progress...", total=total_steps)
-
-                    # Stage 1: Check for existing scan results and discover architecture
-                    progress.update(task, description=stages[0][0])
-                    findings = []
-                    raw_dir = output_dir / "raw"
-                    if raw_dir.exists():
-                        console.print("📊 Loading existing scan results for enhanced analysis...")
-                        for json_file in raw_dir.glob("*.json"):
-                            try:
-                                with open(json_file) as f:
-                                    data = json.load(f)
-                                    if isinstance(data, dict) and 'results' in data:
-                                        findings.extend(data['results'])
-                                    elif isinstance(data, list):
-                                        findings.extend(data)
-                            except Exception as e:
-                                logger.debug(f"Could not load {json_file}: {e}")
-
-                    analyzer = ThreatAnalyzer(repo_path)
-                    time.sleep(0.5)  # Brief pause for visual feedback
-                    progress.advance(task, stages[0][1])
-
-                    # Stage 2-5: Generate threat model (combines architecture, attack surface, STRIDE, boundaries, scenarios)
-                    for i in range(1, 5):
-                        progress.update(task, description=stages[i][0])
-                        if i == 1:
-                            # Start the actual analysis
-                            pass
-                        time.sleep(0.3)  # Brief pause for visual feedback
-                        progress.advance(task, stages[i][1])
-
-                    # Run the actual threat model generation
-                    threat_model = analyzer.analyze(findings)
-
-                    # Stage 6: Export files
-                    progress.update(task, description=stages[5][0])
-                    exported_files = analyzer.export_threat_model(threat_model, str(output_dir))
-                    progress.advance(task, stages[5][1])
-
-                # Display summary
-                summary = threat_model['summary']
-                print(f"\n✅ Threat Model Generated!")
-                print(f"   • Total Threats: {summary['total_threats']}")
-                print(f"   • Attack Surface Risk: {summary['attack_surface_score']}")
-                print(f"   • Overall Risk Level: {summary['risk_level']}")
-                print(f"\n📄 Reports generated:")
-                print(f"   • JSON: {exported_files['json']}")
-                print(f"   • Markdown: {exported_files['markdown']}")
-                print(f"   • Diagram: {exported_files['diagram']}")
-
-                # Show STRIDE breakdown
-                print(f"\n🎯 STRIDE Threat Breakdown:")
-                for category, count in summary['stride_breakdown'].items():
-                    if count > 0:
-                        print(f"   • {category.replace('_', ' ')}: {count}")
-
-            except ImportError:
-                print("❌ Threat modeling module not available")
-                logger.error("Failed to import threat_modeling module")
-            except Exception as e:
-                print(f"❌ Threat model generation failed: {e}")
-                logger.error(f"Threat modeling error: {e}", exc_info=True)
+            run_threat_modeling_mode()
 
     except KeyboardInterrupt:
         print("\n\n👋 Scan cancelled by user")

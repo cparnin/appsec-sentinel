@@ -12,7 +12,7 @@ semgrep>=1.127.0,<2.0.0  # SAST scanner - allow 1.x updates, block 2.x
 # AI providers (primary: AWS Bedrock)
 boto3>=1.35.0,<2.0.0  # AWS SDK for Bedrock - allow 1.x updates
 openai>=1.0.0,<2.0.0  # OpenAI API (legacy) - v2+ may have breaking changes
-anthropic>=0.40.0,<1.0.0  # Anthropic Claude API (legacy) - block 1.0 changes
+anthropic>=0.40.0,<2.0.0  # Anthropic Claude API - allow 1.x updates, block 2.x
 
 # Core utilities
 python-dotenv>=1.0.0,<2.0.0  # Environment configuration
