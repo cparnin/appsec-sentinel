@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-echo "🔒 IX AppSec AI Scanner - Web Interface"
+echo "🔒 AppSec Sentinel - Web Interface"
 echo "=================================="
 
 # Function to check if command exists
