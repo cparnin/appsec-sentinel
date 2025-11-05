@@ -811,30 +811,26 @@ try:
 except ImportError:
     CROSS_FILE_AVAILABLE = False
 
-# SBOM and Tool Ingestion
+# SBOM generation
 try:
     from sbom_generator import generate_repository_sbom
-    from tool_ingestion import ingest_project_tools
     SBOM_AVAILABLE = True
-    TOOL_INGESTION_AVAILABLE = True
 except ImportError:
     SBOM_AVAILABLE = False
-    TOOL_INGESTION_AVAILABLE = False
 
 
 def show_interactive_menu() -> str:
     """Show interactive menu and return user choice"""
     print("🎯 Choose an option:")
     print("   [1] Security scan with auto-fixes + SBOM")
-    print("   [2] Enhance project tool results")
-    print("   [3] Generate threat model (STRIDE analysis)")
+    print("   [2] Generate threat model (STRIDE analysis)")
     print("   [q] Quit")
 
     while True:
-        choice = input("\nEnter your choice [1-3, q]: ").strip().lower()
-        if choice in ['1', '2', '3', 'q']:
+        choice = input("\nEnter your choice [1-2, q]: ").strip().lower()
+        if choice in ['1', '2', 'q']:
             return choice
-        print("Invalid choice. Please enter 1, 2, 3, or q")
+        print("Invalid choice. Please enter 1, 2, or q")
 
 def select_scan_level() -> str:
     """Let user choose severity level for scanning"""
@@ -1217,25 +1213,9 @@ def run_security_scan_mode(repo_path: str) -> None:
     logger.info("✅ Completed handle_auto_remediation from main choice 1")
 
 
-def run_tool_ingestion_mode() -> None:
-    """
-    Execute tool ingestion mode (interactive menu choice 2).
-    Enhances existing project tool results.
-    """
-    if TOOL_INGESTION_AVAILABLE:
-        if Path("tool-ingestion").exists():
-            print("🔄 Enhancing project tool results...")
-            asyncio.run(ingest_project_tools())
-            print("✅ Enhanced results available in outputs/")
-        else:
-            print("❌ No tool-ingestion/ directory found. Place tool exports there first.")
-    else:
-        print("❌ Tool ingestion not available")
-
-
 def run_threat_modeling_mode() -> None:
     """
-    Execute threat modeling mode (interactive menu choice 3).
+    Execute threat modeling mode (interactive menu choice 2).
     Generates STRIDE threat analysis for a repository.
     """
     print("\n🛡️  Generating Threat Model (STRIDE Analysis)...")
@@ -1443,10 +1423,6 @@ def main() -> None:
             run_security_scan_mode(repo_path)
 
         elif choice == '2':
-            # Enhance project tool results (works on current directory exports)
-            run_tool_ingestion_mode()
-
-        elif choice == '3':
             # Generate threat model
             run_threat_modeling_mode()
 

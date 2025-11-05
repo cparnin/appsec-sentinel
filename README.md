@@ -7,7 +7,6 @@ AI-powered security scanner with **cross-file vulnerability analysis** and **aut
 ## Features
 
 - **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters with parallel async execution (60-70% faster)
-- **Tool Ingestion** - Import and enhance findings from Snyk, Veracode, Checkmarx, SonarQube with cross-file analysis
 - **Threat Modeling** - Automated STRIDE analysis, architecture mapping, and attack surface assessment
 - **Business Impact Assessment** - Risk scoring with cost estimates and prioritized remediation recommendations
 - **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no project setup needed)

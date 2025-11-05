@@ -43,10 +43,6 @@ reports/
 archive/
 scan_output.txt
 
-# Tool ingestion exports (external security tool results)
-tool-ingestion/*.json
-tool-ingestion/*.xml
-
 # Environment/config
 .env
 .env.*
