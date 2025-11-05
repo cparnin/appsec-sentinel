@@ -1,19 +1,16 @@
 # AppSec-Sentinel
 
-AI-powered security scanner with **cross-file vulnerability analysis** and **automated remediation**. Supports 10+ languages with OpenAI, Claude, and AWS Bedrock.
-
+All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, Threat Model Creation, AI Code Fixes, MCP Integration (with POC exploit capability), Attack Chain Analysis, CLI/Web/CICD Modes, Reporting
 > 📖 **Open Source** - Licensed under the MIT License. Free for personal and commercial use.
 
 ## Features
 
-- **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters with parallel async execution (60-70% faster)
+- **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters
 - **Threat Modeling** - Automated STRIDE analysis, architecture mapping, and attack surface assessment
-- **Business Impact Assessment** - Risk scoring with cost estimates and prioritized remediation recommendations
 - **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no project setup needed)
 - **Zero Configuration Required** - Works on any repo out-of-the-box with sensible defaults
 - **Auto-Remediation** - Creates GitHub PRs with AI-generated code fixes (deterministic by default)
 - **Cross-File Analysis** - Traces attack chains across multiple files and languages
-- **Git-Aware Scanning** - Only scans changed files in PRs for faster results (configurable)
 - **Flexible AI Providers** - OpenAI (default), Claude, or AWS Bedrock
 - **10+ Languages** - JavaScript, TypeScript, Python, Java, Go, Ruby, Rust, C#, PHP, Swift, Kotlin
 - **3 Deployment Modes** - Web UI, CLI, and GitHub Actions CI/CD
@@ -24,11 +21,10 @@ AI-powered security scanner with **cross-file vulnerability analysis** and **aut
 
 ### What You Get Out-of-the-Box ✅
 
-**Security scanning works immediately** - no extra installations needed:
+**Security scanning** - no extra installations needed:
 - ✅ Semgrep (SAST) - included
 - ✅ Gitleaks (secrets) - auto-detects
 - ✅ Trivy (dependencies) - bundled
-- ✅ Syft (SBOM generation) - bundled
 
 **Code quality scanning is optional** - install what you need:
 - ESLint (JavaScript/TypeScript) - `npm install -g eslint`
@@ -77,7 +73,7 @@ cp env.example .env
 ### CI/CD Integration
 ```bash
 # Copy workflow template
-cp ci-cd/security-scan.yml .github/workflows/
+cp projects/security-scan.yml .github/workflows/
 
 # Add GitHub secret:
 #   - OPENAI_API_KEY (or CLAUDE_API_KEY, or AWS credentials)
@@ -99,16 +95,6 @@ git push
 
 Turn Claude Desktop into a conversational security expert - scan, analyze, and auto-remediate through natural language.
 
-**Prerequisites:**
-```bash
-# 1. Install scanner binaries (macOS)
-brew install gitleaks trivy
-
-# 2. Configure credentials
-cp mcp/mcp_env.example mcp/mcp_env
-# Edit mcp/mcp_env with your AI provider credentials (OpenAI, Claude, or AWS Bedrock)
-```
-
 **Setup:** Add to Claude Desktop config:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
@@ -129,7 +115,7 @@ cp mcp/mcp_env.example mcp/mcp_env
 }
 ```
 
-> 💡 Credentials in `mcp/mcp_env` (gitignored) - no secrets in config! [Full MCP setup guide →](mcp/README.md)
+> 💡 Credentials in `mcp/mcp_env` - no secrets in config! Install gitleaks/trivy first.
 
 **15 MCP Tools Available:**
 - **Core:** `scan_repository` • `auto_remediate` • `get_report` • `view_report_html` • `health_check`
@@ -192,8 +178,6 @@ AppSec-Sentinel includes code quality scanning that works on any repository with
 ✅ Pylint (Code Quality): 23 code quality issues
 🎯 Scan complete: 119 security issues + 129 code quality issues
 ```
-
-**Zero configuration needed.** AppSec-Sentinel provides sensible defaults that work everywhere.
 
 ---
 
@@ -268,7 +252,7 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 
 - **[Threat Modeling](THREAT_MODELING.md)** - Automated threat analysis using STRIDE framework
 - **[MCP Setup](mcp/README.md)** - Model Context Protocol integration
-- **[CI/CD Setup](ci-cd/SETUP.md)** - GitHub Actions integration guide
+- **[Project Setup](projects/SETUP.md)** - Project onboarding guide
 - **[Architecture](ARCHITECTURE.md)** - System architecture and design patterns
 
 ## FAQ
