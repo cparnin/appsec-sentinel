@@ -104,16 +104,6 @@ Assess business impact for vulnerabilities in WebGoat
 | `generate_sbom` | Software BOM | Repo name | CycloneDX & SPDX summaries |
 | `generate_threat_model` | STRIDE threat analysis | Repo name | Architecture, threats, risk level |
 
-### API Tools (for IXaidev/Agents)
-| Tool | Purpose | Input | Output |
-|------|---------|-------|--------|
-| `get_scan_findings` | All findings paginated | Repo, filters, page | Combined results from all scanners |
-| `get_semgrep_findings` | SAST findings only | Repo, severity, page | Pure JSON Semgrep results |
-| `get_trivy_findings` | Dependency vulns only | Repo, severity, page | Pure JSON Trivy results |
-| `get_gitleaks_findings` | Secrets only | Repo, page | Pure JSON Gitleaks results |
-| `get_code_quality_findings` | Linter results only | Repo, linter, page | Pure JSON code quality results |
-| `get_sbom_data` | SBOM data | Repo, format | Pure JSON SBOM data |
-
 ## Smart Repository Discovery
 
 Use short names like `nodejs-goof` instead of full paths. Searches:
