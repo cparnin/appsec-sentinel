@@ -727,32 +727,40 @@ class ThreatAnalyzer:
                 comp_counter += 1
 
         # Add data stores with specific database types
-        # CRITICAL: Deduplicate databases by (type, name) tuple for accurate threat modeling
+        # CRITICAL: Smart deduplication for accurate threat modeling
         data_stores = threat_model['architecture']['data_stores']
-        unique_databases = {}  # Maps (type, name) -> database info
+        unique_databases = {}  # Maps type -> database info (consolidated)
         db_id_map = {}  # Maps file paths to database IDs for connection tracing
 
-        # First pass: Create unique database entries
-        for ds in data_stores[:10]:  # Check up to 10 entries
+        # First pass: Smart consolidation by database type
+        # Strategy: Merge same-type DBs, prefer non-"default" names
+        for ds in data_stores[:10]:
             db_type = ds.get('type', 'Database')
             db_name = ds.get('name', 'default')
-            db_key = (db_type, db_name)
 
-            if db_key not in unique_databases:
-                unique_databases[db_key] = {
+            # Get or create entry for this database type
+            if db_type not in unique_databases:
+                unique_databases[db_type] = {
                     'type': db_type,
                     'name': db_name,
                     'files': []
                 }
+            else:
+                # If existing entry has "default" but new one has real name, upgrade
+                if unique_databases[db_type]['name'] == 'default' and db_name != 'default':
+                    unique_databases[db_type]['name'] = db_name
 
             # Track all files that reference this database
             if 'accessing_files' in ds:
-                unique_databases[db_key]['files'].extend(ds['accessing_files'])
+                for f in ds['accessing_files']:
+                    if f not in unique_databases[db_type]['files']:
+                        unique_databases[db_type]['files'].append(f)
             else:
-                unique_databases[db_key]['files'].append(ds['file'])
+                if ds['file'] not in unique_databases[db_type]['files']:
+                    unique_databases[db_type]['files'].append(ds['file'])
 
         # Second pass: Generate diagram nodes for unique databases only
-        for i, (db_key, db_info) in enumerate(list(unique_databases.items())[:5]):
+        for i, (db_type, db_info) in enumerate(list(unique_databases.items())[:5]):
             ds_id = f"DB{i}"
 
             # Map all files that access this database to its ID
@@ -760,7 +768,6 @@ class ThreatAnalyzer:
                 db_id_map[file] = ds_id
 
             # Create descriptive label
-            db_type = db_info['type']
             db_name = db_info['name']
             if db_name and db_name != 'default':
                 label = f"{db_type}<br/>{db_name}"
@@ -802,7 +809,10 @@ class ThreatAnalyzer:
                             first_routes = [f"{r.get('method')} {r.get('path')}" for r in routes[:2]]
                             route_summary = f"{route_count} routes ({', '.join(first_routes)}...)"
 
-                        lines.append(f"    User -->|{route_summary}| {comp_id}")
+                        # Escape quotes in the summary for Mermaid compatibility
+                        route_summary_escaped = route_summary.replace('"', '\\"')
+                        # Wrap in quotes to handle special chars (parentheses, slashes, etc.)
+                        lines.append(f'    User -->|"{route_summary_escaped}"| {comp_id}')
                     else:
                         lines.append(f"    User -->|HTTP Request| {comp_id}")
                     added_connections.add(comp_id)

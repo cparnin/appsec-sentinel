@@ -5,14 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AppSec-Sentinel</title>
     <!-- Mermaid.js for rendering architecture diagrams -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Locked to v10.9.0 for stability (update manually when needed) -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"
+            integrity="sha256-stuIIbAcnM4DbFXHy73P1xXHJDYJ2KRFvp5u8zCJpVU="
+            crossorigin="anonymous"></script>
+    <!-- Fallback CDN if primary fails -->
     <script>
-        // Initialize Mermaid
+        if (typeof mermaid === 'undefined') {
+            document.write('<script src="https://unpkg.com/mermaid@10.9.0/dist/mermaid.min.js"><\/script>');
+        }
+    </script>
+    <script>
+        // Initialize Mermaid with version detection
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
             securityLevel: 'loose'
         });
+
+        // Future-proof wrapper for Mermaid API changes
+        // Detects version and uses correct API
+        async function renderMermaidDiagram(diagramCode) {
+            const diagramId = 'mermaid-diagram-' + Date.now();
+
+            // Try Mermaid v10+ render() API
+            if (typeof mermaid.render === 'function') {
+                try {
+                    const { svg } = await mermaid.render(diagramId, diagramCode);
+                    return svg;
+                } catch (e) {
+                    console.error('Mermaid v10 render failed:', e);
+                    throw e;
+                }
+            }
+            // Fallback to v9 API (if needed in future)
+            else if (typeof mermaid.run === 'function') {
+                console.warn('Using deprecated Mermaid v9 API - consider upgrading');
+                const container = document.createElement('div');
+                container.id = diagramId;
+                container.className = 'mermaid';
+                container.textContent = diagramCode;
+                await mermaid.run({ nodes: [container] });
+                return container.innerHTML;
+            }
+            else {
+                throw new Error('Unsupported Mermaid version - no compatible render method found');
+            }
+        }
     </script>
     <style>
         * {
@@ -754,27 +793,46 @@
                 content.innerHTML = '<p style="color: #666;">Loading architecture diagram...</p>';
                 modal.style.display = 'block';
 
+                console.log('Step 1: Fetching mermaid file...');
                 // Fetch mermaid file
                 const response = await fetch('/reports/architecture.mermaid?v=' + Date.now());
-                if (!response.ok) throw new Error('Failed to load diagram');
+                console.log('Step 2: Fetch response status:', response.status, response.ok);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Fetch failed:', errorText);
+                    throw new Error(`Failed to load diagram (HTTP ${response.status}): ${errorText}`);
+                }
 
                 const mermaidText = await response.text();
+                console.log('Step 3: Fetched text length:', mermaidText.length);
+                console.log('Step 4: First 100 chars:', mermaidText.substring(0, 100));
 
                 // Remove ```mermaid wrapper if present
                 const cleanMermaid = mermaidText.replace(/```mermaid\n?|\n?```/g, '').trim();
+                console.log('Step 5: Cleaned mermaid length:', cleanMermaid.length);
 
-                // Create container for rendered diagram
-                const diagramId = 'mermaid-diagram-' + Date.now();
-                content.innerHTML = `<div id="${diagramId}" style="width: 100%;">${cleanMermaid}</div>`;
+                // Check if renderMermaidDiagram exists
+                if (typeof renderMermaidDiagram !== 'function') {
+                    throw new Error('renderMermaidDiagram function not found - check script loading order');
+                }
 
-                // Render with Mermaid
-                await mermaid.run({
-                    nodes: [document.getElementById(diagramId)]
-                });
+                console.log('Step 6: Calling renderMermaidDiagram...');
+                // Render using future-proof wrapper (auto-detects Mermaid API version)
+                const svg = await renderMermaidDiagram(cleanMermaid);
+                console.log('Step 7: Got SVG, length:', svg ? svg.length : 0);
+
+                // Insert rendered SVG
+                content.innerHTML = svg;
+                console.log('Step 8: SUCCESS - diagram rendered');
 
             } catch (error) {
-                console.error('Mermaid rendering error:', error);
-                content.innerHTML = '<p style="color: #e53e3e;">Failed to load architecture diagram. Make sure threat modeling has been run.</p>';
+                console.error('❌ Mermaid rendering error at:', error.stack || error);
+                content.innerHTML = `<div style="color: #e53e3e; padding: 20px;">
+                    <h3>Failed to load architecture diagram</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p><small>Check browser console (F12) for details</small></p>
+                </div>`;
             }
         }
 

@@ -293,20 +293,105 @@ curl -X POST http://localhost:8000/threat-model -d '{"repo_path": "/path/to/repo
 
 ## Limitations & Roadmap
 
-### Current Limitations
+### What Works Well ✅ (Level 3 - Defined)
 
-**Level 3 (Current)**:
-- ✅ **Database Deduplication**: Fixed - accurately consolidates duplicate database references
-- ✅ **Data Flow Accuracy**: Fixed - traces actual file→database relationships from code
-- ✅ **Route Visualization**: Fixed - shows aggregated routes with security-critical endpoints highlighted
-- ✅ **Language-Agnostic**: Works across Node.js, Python, Java, PHP, Ruby, Go
+**Architecture Discovery**:
+- ✅ **Framework Detection**: Express, Flask, Django, Spring Boot, Laravel, FastAPI, Rails
+- ✅ **Database Types**: PostgreSQL, MySQL, MongoDB, Redis, SQLite, MSSQL, Oracle, Cassandra
+- ✅ **Smart Deduplication**: Consolidates same-type databases, prefers real names over "default"
+- ✅ **Route Extraction**: Aggregates routes, highlights security-critical endpoints (/login, /admin)
+- ✅ **Data Flow Mapping**: Traces actual file→database relationships from code
+- ✅ **Trust Boundaries**: Automatically identifies Internet → Application → Data Layer
 
-**Known Limitations**:
-- ⚠️ **Static Analysis Only** - Does not discover runtime behavior or dynamic routes
-- ⚠️ **Custom Frameworks** - May miss proprietary or heavily customized frameworks
-- ⚠️ **Dependency Depth** - Counts direct dependencies only (not transitive)
-- ⚠️ **Microservices Mesh** - Run per-service (no cross-service visualization yet)
-- ⚠️ **Partial Go/Ruby Support** - Generic patterns only (not framework-specific like Express/Flask)
+**Supported Architectures**:
+- ✅ **Traditional Web Apps**: Monolithic 3-tier architecture
+- ✅ **REST APIs**: Standard HTTP endpoint detection
+- ✅ **Small-Medium Apps**: Up to ~100 routes, ~10 components
+
+---
+
+### Known Limitations ⚠️
+
+**Framework Coverage**:
+- ❌ **Not Supported**: ASP.NET/C#, Kotlin/Ktor, NestJS, Koa, Hapi, Actix (Rust), Gin (Go)
+- ⚠️ **Partial Support**: Go (generic HTTP only), Ruby on Rails (basic detection)
+- ❌ **Modern Patterns**: GraphQL (single endpoint, not resolver-level), gRPC, WebSockets, Server-Sent Events
+
+**Architecture Gaps**:
+- ❌ **API Gateways**: Kong, Ambassador, NGINX ingress not detected
+- ❌ **Message Queues**: Kafka, RabbitMQ, SQS, Redis Pub/Sub not visualized
+- ❌ **Cache Layers**: Cannot distinguish Redis-as-cache from Redis-as-datastore
+- ❌ **External APIs**: Third-party dependencies (Stripe, Twilio, Auth0) not tracked
+- ❌ **Service Mesh**: Istio, Linkerd, Consul not visualized
+- ❌ **Serverless**: Lambda, Cloud Functions, Cloud Run not detected
+
+**Route Detection Edge Cases**:
+- ⚠️ **Dynamic Routes**: Programmatically generated routes (loops, conditionals)
+- ⚠️ **Middleware Routes**: Routes defined in middleware/plugins
+- ⚠️ **Route Prefixes**: /api/v1 versioning may not consolidate properly
+- ⚠️ **Wildcards**: Catch-all routes (*, /**, /:param+) shown as literals
+
+**Database Scenarios**:
+- ⚠️ **Environment Variables**: `process.env.DATABASE_URL` may not extract DB name
+- ⚠️ **Connection Pooling**: Prisma, Sequelize, TypeORM connections may show as file-level references
+- ⚠️ **Multi-Tenant**: Same DB type, different instances not fully distinguished
+- ⚠️ **Read Replicas**: Primary vs replica DBs not differentiated
+- ⚠️ **Cloud-Managed**: RDS, Atlas, Cloud SQL may not show descriptive names
+
+**Data Flow Accuracy**:
+- ⚠️ **ORM Abstractions**: Sequelize, Hibernate, ActiveRecord may hide actual queries
+- ⚠️ **Repository Pattern**: Indirection layers not traced
+- ⚠️ **Dependency Injection**: Spring @Autowired, FastAPI Depends() may miss connections
+- ⚠️ **Async Jobs**: Background tasks, queues, scheduled jobs not visualized
+
+**Scalability Limits**:
+- ⚠️ **Large Apps**: 100+ routes produce crowded, hard-to-read diagrams
+- ⚠️ **Microservices**: No cross-service visualization (run per service)
+- ⚠️ **Circular Dependencies**: Complex module graphs may tangle
+- ⚠️ **Monorepos**: Multiple apps in one repo not separated
+
+**Static Analysis Only**:
+- ⚠️ **No Runtime Data**: Cannot discover runtime-only routes, dynamic DB connections
+- ⚠️ **No Traffic Analysis**: Cannot detect actual usage patterns
+- ⚠️ **No Auth Flow**: Authentication/authorization layers not visualized
+
+---
+
+### Recommended Usage 📋
+
+**✅ Best For**:
+1. **Initial Architecture Review**: Quick overview of entry points and data flows
+2. **Threat Modeling Kickoff**: Generate discussion materials for security sessions
+3. **Trust Boundary Identification**: Visualize where data crosses security zones
+4. **New Team Onboarding**: Help new developers understand system architecture
+5. **Compliance Documentation**: Generate architecture diagrams for SOC2, ISO 27001
+
+**⚠️ Use With Caution**:
+1. **Complex Microservices**: Run per-service, manually connect services
+2. **Event-Driven Systems**: Supplement with manual queue/event mapping
+3. **Large Applications**: Focus on specific subsystems, not entire app
+4. **Modern Cloud-Native**: Add manual notes for serverless, API gateways, service mesh
+
+**❌ Not Suitable For**:
+1. **Replacing Manual Threat Modeling**: Always have security architect review
+2. **Real-Time Threat Detection**: Static analysis only, no runtime monitoring
+3. **Penetration Testing Scope**: Use for initial recon, not final scope definition
+4. **Compliance Certification**: Supplement with manual verification
+
+---
+
+### Validation Checklist ✓
+
+Before trusting the threat model output, **manually verify**:
+
+- [ ] **Routes**: Do extracted routes match `routes --list` or route files?
+- [ ] **Databases**: Check actual connection strings vs detected databases
+- [ ] **Components**: Are all major code modules represented?
+- [ ] **Data Flows**: Do component→DB connections reflect actual queries?
+- [ ] **Missing Elements**: Any API gateways, queues, external APIs to add?
+- [ ] **Trust Boundaries**: Are security control points accurate?
+
+---
 
 ### Under Construction 🚧
 
@@ -315,6 +400,8 @@ curl -X POST http://localhost:8000/threat-model -d '{"repo_path": "/path/to/repo
 - Continuous threat monitoring
 - Threat intelligence feed integration
 - Microservices mesh visualization
+- API gateway and service mesh detection
+- Message queue topology mapping
 - Custom threat frameworks (PASTA, VAST, OCTAVE)
 
 **Level 5 (Future)**:
@@ -322,6 +409,7 @@ curl -X POST http://localhost:8000/threat-model -d '{"repo_path": "/path/to/repo
 - Automated threat response
 - Historical trend analysis
 - Threat hunting automation
+- Real-time attack surface monitoring
 
 ## Best Practices
 

@@ -161,19 +161,28 @@ Automated STRIDE threat analysis that maps your application's attack surface:
 - **STRIDE Analysis** - Identifies spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege threats
 - **Visual Diagrams** - Generates Mermaid architecture diagrams with color-coded risk levels and actual data flows
 - **Attack Surface Scoring** - Quantifies security posture with actionable metrics
-- **Database Deduplication** - Accurately tracks unique data stores across multiple files
-- **Framework Support** - Node.js (Express), Python (Flask, Django, FastAPI), Java (Spring), PHP (Laravel), Ruby (Rails)
+- **Smart Database Deduplication** - Consolidates same-type databases, handles "default" names, tracks all file access patterns
 
-**What Works:**
-- ✅ Accurate database inventory (no duplicates)
-- ✅ Real data flow mapping (component → database relationships)
-- ✅ Route aggregation (shows critical endpoints like /login, /admin)
-- ✅ Language-agnostic patterns (works across 6 major languages)
+**Supported Architectures:**
+- ✅ **Traditional Web Apps**: Express, Flask, Django, Spring, Laravel, FastAPI, Rails
+- ✅ **Monoliths**: Single repo, 3-tier architecture
+- ✅ **Databases**: PostgreSQL, MySQL, MongoDB, Redis, SQLite, MSSQL, Oracle, Cassandra
+- ⚠️ **Microservices**: Run per-service (no cross-service mesh yet)
+- ⚠️ **Partial**: Go, Rust (generic HTTP detection only)
 
-**Under Construction:**
-- 🚧 Runtime behavior analysis (currently static analysis only)
-- 🚧 Microservices mesh visualization (run per-service for now)
-- 🚧 Custom threat frameworks (STRIDE only, PASTA/VAST coming)
+**Known Limitations:**
+- ❌ **Not supported**: ASP.NET/C#, Kotlin, NestJS, Koa, Hapi, GraphQL, gRPC, WebSockets, Serverless (Lambda/Cloud Functions)
+- ❌ **Architecture gaps**: API gateways, message queues (Kafka/RabbitMQ), external API dependencies, service mesh
+- ⚠️ **Scalability**: Large apps (100+ routes) produce crowded diagrams - best for focused analysis
+- ⚠️ **Dynamic routing**: May miss programmatically generated routes or middleware-defined endpoints
+- ⚠️ **Complex DB**: Environment variable URLs, multi-tenant setups, read replicas not fully distinguished
+
+**Best Used For:**
+- ✅ Initial architecture security review
+- ✅ Identifying trust boundaries and entry points
+- ✅ STRIDE threat categorization
+- ✅ Generating discussion materials for threat modeling sessions
+- ⚠️ **Manual validation recommended** - Use diagrams as starting point, not final authority
 
 [Full threat modeling guide →](THREAT_MODELING.md)
 
@@ -317,6 +326,16 @@ A: **Cross-file attack chain detection** - we trace vulnerabilities across multi
 **Q: What does automated threat modeling do?**
 
 A: Generates STRIDE threat analysis, architecture diagrams, and attack surface assessment. **What it does:** Extracts real routes (GET /api/users), detects database types (PostgreSQL, MongoDB), maps components with file paths, color-codes vulnerabilities by severity, identifies trust boundaries. **What it can't do:** Doesn't replace manual threat modeling by security architects. Framework support varies - full route extraction for Express, Flask, Django, Spring, Laravel, FastAPI. Partial support for Rails, Go, Rust (generic endpoints only). No C#/Kotlin support yet. See [THREAT_MODELING.md](THREAT_MODELING.md) for details.
+
+**Q: Are external dependencies locked for stability?**
+
+A: Yes. All external dependencies use locked versions with SRI integrity hashes to prevent breaking changes:
+- **Mermaid.js**: Locked to v10.9.0 (threat model diagrams)
+- **Python packages**: Pinned in `requirements.txt`
+- **Fallback CDNs**: Multiple sources for resilience
+- **Version detection**: Auto-adapts to API changes between major versions
+
+See [DEPENDENCIES.md](DEPENDENCIES.md) for upgrade procedures and vendoring options for air-gapped deployments.
 
 ## Development
 
