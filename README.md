@@ -57,6 +57,8 @@ cp env.example .env
 - Visual reports with executive summaries
 - Download SBOM files (CycloneDX & SPDX)
 
+<img width="1088" height="674" alt="Screenshot 2025-11-05 at 10 06 36 AM" src="https://github.com/user-attachments/assets/60c9c173-4df9-4573-b7db-bbb8745d8968" />
+
 ### CLI Mode
 
 ```bash
@@ -68,6 +70,8 @@ cp env.example .env
 - Choose which tools to run (SAST, secrets, dependencies, code quality, SBOM)
 - Select scan level (critical-high or all)
 - Configure auto-remediation mode
+
+<img width="821" height="264" alt="Screenshot 2025-11-05 at 10 08 44 AM" src="https://github.com/user-attachments/assets/24533bc6-fe76-4064-a00f-9be0411345e4" />
 
 ### CI/CD Integration
 ```bash
@@ -90,7 +94,9 @@ git push
 4. **Remediate** - AI generates fixes and creates separate PRs for code vs dependencies
 5. **Report** - HTML reports + SBOM files + threat models (CycloneDX & SPDX)
 
-## MCP Integration
+<img width="252" height="119" alt="Screenshot 2025-11-05 at 10 16 50 AM" src="https://github.com/user-attachments/assets/0ca6a638-b6a1-49dc-8402-52b8642c1650" />
+
+### MCP Integration
 
 Turn Claude Desktop into a conversational security expert - scan, analyze, and auto-remediate through natural language.
 
@@ -125,11 +131,15 @@ Turn Claude Desktop into a conversational security expert - scan, analyze, and a
 
 [Full MCP setup guide →](mcp/README.md)
 
+<img width="748" height="356" alt="Screenshot 2025-11-05 at 10 13 04 AM" src="https://github.com/user-attachments/assets/5521fc39-08a1-4a6b-a674-f63df50668ad" />
+
 ## Auto-Fix Modes
 - **Mode 1**: SAST + secrets (1 PR)
 - **Mode 2**: Dependencies only (1 PR)
 - **Mode 3**: Both (2 separate PRs) - Recommended
 - **Mode 4**: Scan only (no PRs)
+
+<img width="827" height="162" alt="Screenshot 2025-11-05 at 10 12 13 AM" src="https://github.com/user-attachments/assets/f8754320-5342-46fc-8492-8c8789417bc0" />
 
 ## Cross-File Analysis
 
@@ -139,6 +149,7 @@ Traces attack paths across multiple files and languages:
 - **Data Flow Tracing** - Entry points → attack paths → sensitive sinks
 - **Framework-Aware** - Express, Spring, Django, Rails, Laravel, ASP.NET
 
+<img width="1064" height="234" alt="Screenshot 2025-11-05 at 10 19 58 AM" src="https://github.com/user-attachments/assets/3bec2886-8000-49ad-a805-b9e27d3cbfb0" />
 
 ## Architecture
 
@@ -176,6 +187,8 @@ AppSec-Sentinel includes code quality scanning that works on any repository with
 🎯 Scan complete: 119 security issues + 129 code quality issues
 ```
 
+<img width="1117" height="350" alt="Screenshot 2025-11-05 at 10 21 13 AM" src="https://github.com/user-attachments/assets/30ebc957-59d0-4332-84eb-6d8f1388d34a" />
+
 ---
 
 ## Optional: Install Code Quality Linters
@@ -206,9 +219,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  # Includes clipp
 # PHP
 composer global require phpstan/phpstan
 ```
-
-**Don't want code quality?** Set `APPSEC_CODE_QUALITY=false` in `.env` to skip entirely.
-
 ---
 
 ## Configuration
