@@ -160,8 +160,6 @@ Automated STRIDE threat analysis that maps your application's attack surface:
 - **Architecture Discovery** - Auto-detects routes, databases, and trust boundaries from code (language-agnostic)
 - **STRIDE Analysis** - Identifies spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege threats
 - **Visual Diagrams** - Generates Mermaid architecture diagrams with color-coded risk levels and actual data flows
-- **Attack Surface Scoring** - Quantifies security posture with actionable metrics
-- **Smart Database Deduplication** - Consolidates same-type databases, handles "default" names, tracks all file access patterns
 
 **Supported Architectures:**
 - ✅ **Traditional Web Apps**: Express, Flask, Django, Spring, Laravel, FastAPI, Rails
@@ -183,6 +181,8 @@ Automated STRIDE threat analysis that maps your application's attack surface:
 - ✅ STRIDE threat categorization
 - ✅ Generating discussion materials for threat modeling sessions
 - ⚠️ **Manual validation recommended** - Use diagrams as starting point, not final authority
+
+<img width="503" height="564" alt="Screenshot 2025-11-05 at 2 38 47 PM" src="https://github.com/user-attachments/assets/e77672f8-e7c1-44f3-8a91-0f7e013e2392" />
 
 [Full threat modeling guide →](THREAT_MODELING.md)
 
