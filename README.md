@@ -8,7 +8,7 @@ All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, Threat Model Cre
 - **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters
 - **Threat Modeling** - Automated STRIDE analysis, architecture mapping, and attack surface assessment
 - **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no project setup needed)
-- **Auto-Remediation** - Creates GitHub PRs with AI-generated code fixes (deterministic by default)
+- **Auto-Remediation** - Creates GitHub PRs with LLM-generated code fixes using OpenAI/Claude/Bedrock (optional)
 - **Cross-File Analysis** - Traces attack chains across multiple files and languages
 - **Flexible AI Providers** - OpenAI (default), Claude, or AWS Bedrock
 - **10+ Languages** - JavaScript, TypeScript, Python, Java, Go, Ruby, Rust, C#, PHP, Swift, Kotlin
@@ -34,13 +34,13 @@ All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, Threat Model Cre
 
 ### Prerequisites
 
-Configure AI provider in `.env` (only needed for AI auto-remediation):
+Configure LLM provider in `.env` (only needed for auto-remediation feature):
 ```bash
 cp env.example .env
 # Edit .env and set:
 # AI_PROVIDER=openai
 # OPENAI_API_KEY=sk-...
-# AI_MODEL=gpt-5-mini
+# AI_MODEL=gpt-4o-mini
 ```
 
 > 💡 **Alternative providers**: Also supports `AI_PROVIDER=claude` or `AI_PROVIDER=aws_bedrock` (see env.example for all options)
@@ -89,9 +89,9 @@ git push
 ## How It Works
 
 1. **Scan** - Runs 3 scanners in parallel (SAST, secrets, dependencies)
-2. **Analyze** - Cross-file analysis identifies attack chains across files
-3. **Threat Model** - STRIDE analysis maps vulnerabilities to architectural threats
-4. **Remediate** - AI generates fixes and creates separate PRs for code vs dependencies
+2. **Analyze** - Cross-file AST analysis identifies attack chains across files using graph traversal
+3. **Threat Model** - STRIDE analysis maps vulnerabilities to architectural threats using static analysis
+4. **Remediate** - LLM generates fixes and creates separate PRs for code vs dependencies (requires API keys)
 5. **Report** - HTML reports + SBOM files + threat models (CycloneDX & SPDX)
 
 <img width="252" height="119" alt="Screenshot 2025-11-05 at 10 16 50 AM" src="https://github.com/user-attachments/assets/0ca6a638-b6a1-49dc-8402-52b8642c1650" />
@@ -298,13 +298,13 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 
 ## FAQ
 
-**Q: Is AI-generated code safe to merge?**
+**Q: Is LLM-generated code safe to merge?**
 
-A: All fixes require manual review via PR. We use deterministic AI (temperature=0.0) and only fix proven patterns (SQL injection, XSS, hardcoded secrets). Your existing tests validate changes. Separate PRs for code vs dependencies minimize risk. ~80% of fixes are production-ready after quick review.
+A: All fixes require manual review via PR. We use deterministic LLM settings (temperature=0.0) and only fix proven patterns (SQL injection, XSS, hardcoded secrets). Your existing tests validate changes. Separate PRs for code vs dependencies minimize risk. ~80% of fixes are production-ready after quick review.
 
-**Q: What data gets sent to AI providers?**
+**Q: What data gets sent to LLM providers?**
 
-A: Only vulnerability metadata (file path, line number, vulnerability type, code snippet). **Never** your full codebase. Secrets are flagged locally and **never** sent to AI. You control which findings trigger AI analysis.
+A: Only vulnerability metadata (file path, line number, vulnerability type, code snippet). **Never** your full codebase. Secrets are flagged locally and **never** sent to LLMs. You control which findings trigger LLM analysis. Note: Scanning, cross-file analysis, and threat modeling run **100% locally** with zero API calls.
 
 **Q: Which mode should I use?**
 
@@ -321,7 +321,7 @@ A: No - security scanning works without any linters. Code quality is **optional*
 
 **Q: How is this different from other security scanners?**
 
-A: **Cross-file attack chain detection** - we trace vulnerabilities across multiple files and languages using AST analysis, not just single-file pattern matching. Plus automated threat modeling (STRIDE), AI-powered fixes, and zero-config SBOM generation.
+A: **Cross-file attack chain detection** - we trace vulnerabilities across multiple files and languages using AST analysis and graph traversal, not just single-file pattern matching. Plus automated threat modeling (STRIDE), optional LLM-generated fixes, and zero-config SBOM generation.
 
 **Q: What does automated threat modeling do?**
 

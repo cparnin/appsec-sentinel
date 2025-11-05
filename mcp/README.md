@@ -33,14 +33,18 @@ snap install trivy          # Snap
 ```bash
 cd /path/to/AppSec-Sentinel/mcp
 cp mcp_env.example mcp_env
-# Edit mcp_env with AWS and GitHub credentials
+# Edit mcp_env with LLM provider and GitHub credentials
 ```
 
-**Required:**
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` - Bedrock AI access
-- `AWS_REGION` - Must match inference profile (e.g., us-east-2)
-- `INFERENCE_PROFILE_ID` - Bedrock model ARN
-- `GITHUB_TOKEN` - For PR creation ([create token](https://github.com/settings/tokens))
+**Required for scanning:** None - scanning works without any API keys
+
+**Required for auto-remediation (choose one LLM provider):**
+- **OpenAI**: `OPENAI_API_KEY`, `AI_PROVIDER=openai`, `AI_MODEL=gpt-4o-mini`
+- **Claude**: `CLAUDE_API_KEY`, `AI_PROVIDER=claude`, `AI_MODEL=claude-sonnet-4-20250514`
+- **AWS Bedrock**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `INFERENCE_PROFILE_ID`, `AI_PROVIDER=aws_bedrock`
+
+**Required for PR creation:**
+- `GITHUB_TOKEN` - For creating fix PRs ([create token](https://github.com/settings/tokens))
 
 ### 3. Update Claude Desktop Config
 
@@ -91,7 +95,7 @@ Assess business impact for vulnerabilities in WebGoat
 | Tool | Purpose | Input | Output |
 |------|---------|-------|--------|
 | `scan_repository` | Full security scan | Repo name/path | Vulnerability counts, risk summary |
-| `auto_remediate` | AI-powered fixes | Repo name | PR URLs for fixes |
+| `auto_remediate` | LLM-powered fixes | Repo name | PR URLs for fixes |
 | `get_report` | Detailed report | Repo name | Full vulnerability breakdown |
 | `view_report_html` | Open HTML report | Repo name | Opens browser with visual report |
 | `health_check` | System diagnostics | None | Scanner availability, config status |
@@ -117,7 +121,7 @@ Use short names like `nodejs-goof` instead of full paths. Searches:
 |-------|----------|
 | "Repository not found" | Use short name (e.g., `nodejs-goof`) or full path |
 | "No tools in Claude Desktop" | Check config JSON syntax, verify Python path, restart Claude |
-| "Scan failed" | Verify AWS credentials in `mcp/mcp_env` and scanner binaries installed |
+| "Scan failed" | Verify scanner binaries installed (gitleaks, trivy). API keys not needed for scanning. |
 | "Scanner not found" | Install gitleaks/trivy and ensure they're in PATH |
 | "PR creation failed" | Check `GITHUB_TOKEN` has `repo` permissions, verify git user: `git config --global user.name` |
 
@@ -132,9 +136,9 @@ Use short names like `nodejs-goof` instead of full paths. Searches:
 ## Security
 
 - Credentials in `mcp/mcp_env` (gitignored, local only)
-- AWS Bedrock processes within your infrastructure
+- Scanning runs 100% locally (no API calls)
+- Auto-remediation uses LLM APIs (OpenAI/Claude/Bedrock)
 - PRs require manual review before merge
-- No external communication except AI APIs
 
 ---
 

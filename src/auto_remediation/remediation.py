@@ -340,7 +340,7 @@ class AutoRemediator:
             if self.model is None or not self.model.startswith(('gpt', 'o1')):
                 if self.model is not None:  # Only warn if model was explicitly set to invalid value
                     logger.warning(f"Model '{self.model}' is not a valid OpenAI model. Falling back to default.")
-                self.model = os.getenv('AI_MODEL', 'gpt-5-mini')
+                self.model = os.getenv('AI_MODEL', 'gpt-4o-mini')
         elif self.ai_provider == 'claude':
             self.client = anthropic.Anthropic(api_key=self.api_key)
             if self.model is None or not self.model.startswith('claude'):
@@ -1292,7 +1292,7 @@ This PR contains automatic fixes for security vulnerabilities detected by our Ap
 - [ ] **Security Scan**: Re-run scanner to verify fixes work
 
 ### 🔍 Technical Details:
-- **AI Model**: gpt-4.1-mini
+- **AI Model**: {self.model}
 - **Scanner**: Semgrep SAST
 - **Branch**: `{branch_name}`
 

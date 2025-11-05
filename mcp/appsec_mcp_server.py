@@ -41,7 +41,7 @@ class EverythingAppSecMCP:
             },
             {
                 "name": "auto_remediate",
-                "description": "AI-powered auto-remediation that generates fixes and creates GitHub PRs. Creates 2 separate PRs: one for SAST/code fixes, one for dependency updates. Requires prior scan. Example: 'Fix the vulnerabilities and create PRs'",
+                "description": "LLM-powered auto-remediation that generates fixes and creates GitHub PRs. Creates 2 separate PRs: one for SAST/code fixes, one for dependency updates. Requires prior scan. Example: 'Fix the vulnerabilities and create PRs'",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -676,7 +676,7 @@ Example: export APPSEC_PATH="/path/to/your/appsec-sentinel" """)
         env["APPSEC_AUTO_FIX_MODE"] = "3"  # Both SAST and dependencies
         # Scan level already loaded from mcp_env via _load_env_file()
 
-        # Configurable timeout (default: 10 minutes for AI-powered remediation)
+        # Configurable timeout (default: 10 minutes for LLM-powered remediation)
         remediate_timeout = int(os.getenv('MCP_REMEDIATE_TIMEOUT', '600'))
 
         # Ensure scanner binaries are in PATH (cross-platform support)
@@ -780,7 +780,7 @@ Example: export APPSEC_PATH="/path/to/your/appsec-sentinel" """)
         except subprocess.TimeoutExpired:
             timeout_msg = f"❌ Auto-remediation timed out after {remediate_timeout} seconds (increase with MCP_REMEDIATE_TIMEOUT env var)"
             if os.getenv('APPSEC_DEBUG') == 'true':
-                timeout_msg += f"\n\n**Debug Info**: AI-powered remediation takes longer. Consider increasing timeout for complex fixes."
+                timeout_msg += f"\n\n**Debug Info**: LLM-powered remediation takes longer. Consider increasing timeout for complex fixes."
             return timeout_msg
         except Exception as e:
             error_msg = f"❌ Auto-remediation failed: {str(e)}"
@@ -1005,7 +1005,7 @@ Run `scan_repository` first to generate cross-file analysis.
 
 ## 🎯 Recommendation: {recommendation}
 
-**Status**: ✅ AI-powered risk assessment completed
+**Status**: ✅ Automated risk assessment completed
 """
         
         return """# 🎯 No Assessment Available

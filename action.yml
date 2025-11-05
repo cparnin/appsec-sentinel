@@ -1,5 +1,5 @@
 name: 'AppSec-Sentinel'
-description: 'AI-powered security scanner with SAST, secrets detection, dependency scanning, and auto-remediation'
+description: 'Comprehensive security scanner with SAST, secrets detection, dependency scanning, and optional LLM-powered auto-remediation'
 author: 'AppSec-Sentinel Contributors'
 
 branding:
@@ -8,7 +8,7 @@ branding:
 
 inputs:
   ai-provider:
-    description: "The AI provider to use ('openai', 'claude', or 'aws_bedrock')"
+    description: "The LLM provider to use for auto-remediation ('openai', 'claude', or 'aws_bedrock')"
     required: false
     default: 'openai'
   aws-access-key-id:
@@ -24,12 +24,12 @@ inputs:
   inference-profile-id:
     description: 'AWS Bedrock Inference Profile ID for Claude .5 (e.g., us.anthropic.claude-sonnet-4-5-20250929-v1:0)'
     required: false
-  # Alternative AI providers
+  # Alternative LLM providers
   openai-api-key:
-    description: 'OpenAI API key for AI-powered features'
+    description: 'OpenAI API key for auto-remediation (optional)'
     required: false
   claude-api-key:
-    description: 'Claude API key for AI-powered features'
+    description: 'Claude API key for auto-remediation (optional)'
     required: false
   auto-fix:
     description: 'Enable automatic remediation and PR creation'
@@ -135,7 +135,7 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
         AWS_REGION: ${{ inputs.aws-region }}
         INFERENCE_PROFILE_ID: ${{ inputs.inference-profile-id }}
-        # Alternative AI provider credentials
+        # Alternative LLM provider credentials
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         CLAUDE_API_KEY: ${{ inputs.claude-api-key }}
         APPSEC_AUTO_FIX: ${{ inputs.auto-fix }}

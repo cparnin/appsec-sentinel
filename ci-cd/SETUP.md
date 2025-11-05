@@ -1,6 +1,6 @@
 # AppSec-Sentinel Setup
 
-AI-powered security scanner for any programming language. Detects vulnerabilities and can create fix PRs.
+Comprehensive security scanner for any programming language. Detects vulnerabilities and can create fix PRs using LLMs (optional).
 
 ## Quick Setup (3 steps)
 

@@ -2,7 +2,7 @@
 """
 AppSec-Sentinel - Interactive CLI
 
-🔒 Comprehensive security scanner with AI-powered auto-remediation
+🔒 Comprehensive security scanner with optional LLM-powered auto-remediation
 
 This is the main entry point for AppSec-Sentinel, providing:
 - Interactive repository selection with smart discovery
@@ -10,7 +10,7 @@ This is the main entry point for AppSec-Sentinel, providing:
 - Git-aware scanning (only changed files for performance)
 - Comprehensive reporting with business context
 - Cross-file vulnerability analysis with deep codebase understanding
-- AI-powered auto-remediation creating separate PRs
+- Optional LLM-powered auto-remediation creating separate PRs
 - Rich progress bars and comprehensive reporting
 
 Architecture:
@@ -1401,7 +1401,7 @@ def main() -> None:
     print("\n" + "="*80)
     print("🔒 AppSec-Sentinel - © 2025 Open Source Security Scanner")
     print("="*80)
-    print("AI-powered security scanner that finds vulnerabilities and creates fixes")
+    print("Comprehensive security scanner with cross-file analysis and optional LLM-powered fixes")
     print("📖 MIT Licensed - Free for personal and commercial use")
     print("="*80)
     print()

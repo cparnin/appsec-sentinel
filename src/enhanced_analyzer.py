@@ -3,7 +3,7 @@
 Cross-File Analysis Integration for AppSec-Sentinel
 
 This module integrates the cross-file analyzer with the main scanner to provide
-enhanced AI-powered vulnerability analysis with deep codebase understanding.
+enhanced vulnerability analysis with deep codebase understanding using AST analysis and graph traversal.
 Uses the CrossFileAnalyzer from cross_file_analyzer.py for actual cross-file analysis.
 """
 
