@@ -18,7 +18,7 @@ All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, Threat Model Cre
 
 ## Quick Start
 
-### What You Get Out-of-the-Box ✅
+### What You Get Out-of-the-Box
 
 **Security scanning** - no extra installations needed:
 - Semgrep (SAST) - included
@@ -150,6 +150,18 @@ Traces attack paths across multiple files and languages:
 - **Framework-Aware** - Express, Spring, Django, Rails, Laravel, ASP.NET
 
 <img width="1064" height="234" alt="Screenshot 2025-11-05 at 10 19 58 AM" src="https://github.com/user-attachments/assets/3bec2886-8000-49ad-a805-b9e27d3cbfb0" />
+
+## Threat Modeling
+
+Automated STRIDE threat analysis that maps your application's attack surface:
+
+- **Architecture Discovery** - Auto-detects routes, databases, and trust boundaries from code
+- **STRIDE Analysis** - Identifies spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege threats
+- **Visual Diagrams** - Generates architecture diagrams with color-coded risk levels
+- **Attack Surface Scoring** - Quantifies security posture with actionable metrics
+- **Framework Support** - Full route extraction for Express, Flask, Django, Spring, Laravel, FastAPI
+
+[Full threat modeling guide →](THREAT_MODELING.md)
 
 ## Architecture
 
