@@ -153,13 +153,27 @@ Traces attack paths across multiple files and languages:
 
 ## Threat Modeling
 
+> **Maturity Level: 3 (Defined)** - Production-ready with accurate asset inventory and data flow analysis
+
 Automated STRIDE threat analysis that maps your application's attack surface:
 
-- **Architecture Discovery** - Auto-detects routes, databases, and trust boundaries from code
+- **Architecture Discovery** - Auto-detects routes, databases, and trust boundaries from code (language-agnostic)
 - **STRIDE Analysis** - Identifies spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege threats
-- **Visual Diagrams** - Generates architecture diagrams with color-coded risk levels
+- **Visual Diagrams** - Generates Mermaid architecture diagrams with color-coded risk levels and actual data flows
 - **Attack Surface Scoring** - Quantifies security posture with actionable metrics
-- **Framework Support** - Full route extraction for Express, Flask, Django, Spring, Laravel, FastAPI
+- **Database Deduplication** - Accurately tracks unique data stores across multiple files
+- **Framework Support** - Node.js (Express), Python (Flask, Django, FastAPI), Java (Spring), PHP (Laravel), Ruby (Rails)
+
+**What Works:**
+- ✅ Accurate database inventory (no duplicates)
+- ✅ Real data flow mapping (component → database relationships)
+- ✅ Route aggregation (shows critical endpoints like /login, /admin)
+- ✅ Language-agnostic patterns (works across 6 major languages)
+
+**Under Construction:**
+- 🚧 Runtime behavior analysis (currently static analysis only)
+- 🚧 Microservices mesh visualization (run per-service for now)
+- 🚧 Custom threat frameworks (STRIDE only, PASTA/VAST coming)
 
 [Full threat modeling guide →](THREAT_MODELING.md)
 

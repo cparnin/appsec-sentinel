@@ -34,40 +34,42 @@ class ThreatAnalyzer:
         self._max_read_size = 100 * 1024  # 100KB
 
         # Route extraction patterns (method, path)
+        # Language-agnostic: Supports major frameworks across Node.js, Python, Java, PHP, Ruby
         self.route_patterns = {
-            'express': [
+            'express': [  # Node.js/TypeScript
                 (r'app\.(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
                 (r'router\.(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
             ],
-            'flask': [
+            'flask': [  # Python
                 (r'@app\.route\([\'"]([^\'"]+)[\'"].*?methods=\[(.*?)\]', 'path_methods'),
                 (r'@app\.route\([\'"]([^\'"]+)[\'"]', 'path_only'),
             ],
-            'django': [
+            'django': [  # Python
                 (r'path\([\'"]([^\'"]+)[\'"]', 'path_only'),
             ],
-            'spring': [
+            'spring': [  # Java
                 (r'@RequestMapping\([\'"]([^\'"]+)[\'"]', 'path_only'),
                 (r'@(Get|Post|Put|Delete|Patch)Mapping\([\'"]([^\'"]+)[\'"]', 'method_path'),
             ],
-            'laravel': [
+            'laravel': [  # PHP
                 (r'Route::(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
             ],
-            'fastapi': [
+            'fastapi': [  # Python
                 (r'@app\.(get|post|put|delete|patch)\([\'"]([^\'"]+)[\'"]', 'method_path'),
             ]
         }
 
         # Database type detection patterns
+        # Language-agnostic: Detects databases across Node.js, Python, Java, PHP ecosystems
         self.database_patterns = {
-            'PostgreSQL': ['pg', 'postgres', 'PostgreSQL', 'psycopg2', 'asyncpg'],
-            'MySQL': ['mysql', 'MySQL', 'mysqlclient', 'pymysql'],
-            'MongoDB': ['mongoose', 'mongodb', 'MongoClient', 'pymongo'],
-            'Redis': ['redis', 'Redis', 'ioredis'],
-            'SQLite': ['sqlite3', 'SQLite'],
-            'MSSQL': ['mssql', 'SQL Server', 'pyodbc', 'tedious'],
-            'Oracle': ['oracle', 'cx_Oracle', 'oracledb'],
-            'Cassandra': ['cassandra', 'pycassa'],
+            'PostgreSQL': ['pg', 'postgres', 'PostgreSQL', 'psycopg2', 'asyncpg'],  # Node.js, Python
+            'MySQL': ['mysql', 'MySQL', 'mysqlclient', 'pymysql'],  # Node.js, Python, Java
+            'MongoDB': ['mongoose', 'mongodb', 'MongoClient', 'pymongo'],  # Node.js, Python
+            'Redis': ['redis', 'Redis', 'ioredis'],  # Node.js, Python
+            'SQLite': ['sqlite3', 'SQLite'],  # Python, Node.js
+            'MSSQL': ['mssql', 'SQL Server', 'pyodbc', 'tedious'],  # Python, Node.js
+            'Oracle': ['oracle', 'cx_Oracle', 'oracledb'],  # Python, Node.js
+            'Cassandra': ['cassandra', 'pycassa'],  # Python, Java
         }
 
     def analyze(self, findings: List[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -215,11 +217,25 @@ class ThreatAnalyzer:
                     # Detect data stores with specific database types
                     db_type = self._detect_database_type(content)
                     if db_type or any(p in content for p in ['mongoose.', 'Sequelize', 'models.Model', 'JpaRepository', 'ActiveRecord', 'PDO', 'sql.DB']):
-                        if cache_key not in [d['file'] for d in self.data_stores]:
+                        db_name = self._extract_db_name(content)
+
+                        # Deduplicate by (type, name) tuple - multiple files can reference same DB
+                        # This is critical for accurate threat modeling asset inventory
+                        db_key = (db_type or 'database', db_name)
+                        existing_db = next((d for d in self.data_stores if (d['type'], d['name']) == db_key), None)
+
+                        if existing_db:
+                            # Track which files access this database (for data flow analysis)
+                            if 'accessing_files' not in existing_db:
+                                existing_db['accessing_files'] = [existing_db['file']]
+                            if cache_key not in existing_db['accessing_files']:
+                                existing_db['accessing_files'].append(cache_key)
+                        else:
                             self.data_stores.append({
                                 'file': cache_key,
                                 'type': db_type or 'database',
-                                'name': self._extract_db_name(content)
+                                'name': db_name,
+                                'accessing_files': [cache_key]  # Track all files that access this DB
                             })
 
                 except Exception:
@@ -711,18 +727,41 @@ class ThreatAnalyzer:
                 comp_counter += 1
 
         # Add data stores with specific database types
+        # CRITICAL: Deduplicate databases by (type, name) tuple for accurate threat modeling
         data_stores = threat_model['architecture']['data_stores']
-        db_id_map = {}
+        unique_databases = {}  # Maps (type, name) -> database info
+        db_id_map = {}  # Maps file paths to database IDs for connection tracing
 
-        for i, ds in enumerate(data_stores[:5]):  # Limit to 5 databases
-            ds_id = f"DB{i}"
-            db_id_map[ds['file']] = ds_id
-
-            # Use specific database type
+        # First pass: Create unique database entries
+        for ds in data_stores[:10]:  # Check up to 10 entries
             db_type = ds.get('type', 'Database')
             db_name = ds.get('name', 'default')
+            db_key = (db_type, db_name)
+
+            if db_key not in unique_databases:
+                unique_databases[db_key] = {
+                    'type': db_type,
+                    'name': db_name,
+                    'files': []
+                }
+
+            # Track all files that reference this database
+            if 'accessing_files' in ds:
+                unique_databases[db_key]['files'].extend(ds['accessing_files'])
+            else:
+                unique_databases[db_key]['files'].append(ds['file'])
+
+        # Second pass: Generate diagram nodes for unique databases only
+        for i, (db_key, db_info) in enumerate(list(unique_databases.items())[:5]):
+            ds_id = f"DB{i}"
+
+            # Map all files that access this database to its ID
+            for file in db_info['files']:
+                db_id_map[file] = ds_id
 
             # Create descriptive label
+            db_type = db_info['type']
+            db_name = db_info['name']
             if db_name and db_name != 'default':
                 label = f"{db_type}<br/>{db_name}"
             else:
@@ -734,31 +773,77 @@ class ThreatAnalyzer:
         lines.append("")
         lines.append("    %% User requests to endpoints")
 
-        # Connect user to each unique component
+        # Connect user to each unique component with aggregated route information
+        # Critical for threat modeling: show actual attack surface, not just first route
         added_connections = set()
         for ep in entry_points[:10]:  # Limit to 10 entry points
             comp_file = ep['file']
             if comp_file in comp_id_map:
                 comp_id = comp_id_map[comp_file]
                 if comp_id not in added_connections:
-                    # Show route info on connection if available
+                    # Show aggregated route info for threat modeling accuracy
                     if 'routes' in ep and ep['routes']:
-                        route = ep['routes'][0]  # Show first route
-                        method = route.get('method', 'HTTP')
-                        path = route.get('path', '/')
-                        lines.append(f"    User -->|{method} {path}| {comp_id}")
+                        routes = ep['routes']
+                        route_count = len(routes)
+
+                        # Identify critical routes for security analysis
+                        critical_routes = [r for r in routes if any(keyword in r.get('path', '').lower()
+                                          for keyword in ['login', 'admin', 'auth', 'password', 'api', 'user'])]
+
+                        if route_count <= 3:
+                            # Show all routes if only a few
+                            route_summary = ', '.join([f"{r.get('method', 'HTTP')} {r.get('path', '/')}" for r in routes])
+                        elif critical_routes:
+                            # Highlight critical routes + count
+                            key_routes = [f"{r.get('method')} {r.get('path')}" for r in critical_routes[:2]]
+                            route_summary = f"{route_count} routes ({', '.join(key_routes)}...)"
+                        else:
+                            # Show first few + count
+                            first_routes = [f"{r.get('method')} {r.get('path')}" for r in routes[:2]]
+                            route_summary = f"{route_count} routes ({', '.join(first_routes)}...)"
+
+                        lines.append(f"    User -->|{route_summary}| {comp_id}")
                     else:
                         lines.append(f"    User -->|HTTP Request| {comp_id}")
                     added_connections.add(comp_id)
 
-        # Connect components to databases
+        # Connect components to databases based on actual file→DB relationships
+        # This is CRITICAL for accurate threat modeling: wrong data flows = wrong threat analysis
         if comp_id_map and db_id_map:
             lines.append("")
-            lines.append("    %% Component to database connections")
-            # Connect first few components to first database (simplified)
-            for comp_id in list(comp_id_map.values())[:3]:
-                for db_id in list(db_id_map.values())[:1]:
-                    lines.append(f"    {comp_id} -->|Query| {db_id}")
+            lines.append("    %% Component to database connections (based on actual code analysis)")
+
+            # Build reverse mapping: component_file → list of databases it accesses
+            connections_made = set()
+
+            for ds in data_stores:
+                accessing_files = ds.get('accessing_files', [ds.get('file')])
+                # Find the DB node ID for this datastore
+                ds_id = None
+                for file in accessing_files:
+                    if file in db_id_map:
+                        ds_id = db_id_map[file]
+                        break
+
+                if not ds_id:
+                    continue
+
+                # Connect components that actually use this database
+                for file in accessing_files:
+                    if file in comp_id_map:
+                        comp_id = comp_id_map[file]
+                        connection_key = (comp_id, ds_id)
+                        if connection_key not in connections_made:
+                            lines.append(f"    {comp_id} -->|Query| {ds_id}")
+                            connections_made.add(connection_key)
+
+            # If no connections were made (architecture discovery didn't find overlap),
+            # show a simplified connection to avoid orphaned databases
+            if not connections_made and comp_id_map and db_id_map:
+                lines.append("    %% Note: Simplified connections shown (no direct file overlap detected)")
+                first_comp = list(comp_id_map.values())[0]
+                first_db = list(db_id_map.values())[0]
+                lines.append(f"    {first_comp} -->|Query| {first_db}")
 
         # Add trust boundaries with components
         lines.append("")

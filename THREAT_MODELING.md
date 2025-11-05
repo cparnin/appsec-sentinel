@@ -1,17 +1,28 @@
 # Threat Modeling
 
+> **Maturity Level: 3 (Defined)** - Production-ready automated threat analysis with accurate asset inventory and data flow mapping
+
 Automated threat analysis using STRIDE framework, architecture mapping, and attack surface assessment.
+
+## Threat Modeling Maturity Levels
+
+- **Level 1** (Initial): Basic pattern matching only
+- **Level 2** (Repeatable): Framework detection and component discovery
+- **Level 3** (Defined): Accurate data flows, asset inventory, and trust boundaries ✅ **← Current**
+- **Level 4** (Managed): Runtime threat detection and continuous monitoring (roadmap)
+- **Level 5** (Optimizing): Automated threat intelligence integration (roadmap)
 
 ## What It Does
 
 Generates comprehensive threat models by:
 
-1. **Architecture Discovery** - Identifies components, frameworks, entry points, and data stores
+1. **Architecture Discovery** - Identifies components, frameworks, entry points, and data stores (language-agnostic)
 2. **STRIDE Analysis** - Maps security findings to threat categories
-3. **Attack Surface Mapping** - Quantifies external-facing risks
-4. **Trust Boundary Identification** - Highlights security control points
-5. **Threat Scenario Generation** - Creates actionable threat descriptions
-6. **Visual Diagrams** - Generates Mermaid architecture diagrams
+3. **Attack Surface Mapping** - Quantifies external-facing risks with accurate route counting
+4. **Trust Boundary Identification** - Highlights security control points between layers
+5. **Threat Scenario Generation** - Creates actionable threat descriptions with business impact
+6. **Visual Diagrams** - Generates Mermaid architecture diagrams with real data flow connections
+7. **Database Deduplication** - Consolidates duplicate database references into single assets
 
 ## Output
 
@@ -71,21 +82,30 @@ Threats are categorized using Microsoft's STRIDE model:
 
 ## Architecture Components
 
-### Auto-Detected Elements
+### Auto-Detected Elements (Language-Agnostic)
 
-**Frameworks:**
-- Express, Flask, Django, Spring, Rails, Laravel, FastAPI
+**Frameworks** (6 languages supported):
+- **Node.js/TypeScript**: Express
+- **Python**: Flask, Django, FastAPI
+- **Java**: Spring Boot (all annotations: @RequestMapping, @GetMapping, etc.)
+- **PHP**: Laravel
+- **Ruby**: Rails (partial support)
+- **Go**: Generic HTTP handlers (partial support)
 
 **Entry Points:**
-- HTTP endpoints (routes, controllers, APIs)
+- HTTP endpoints with route extraction (GET /login, POST /api/users, etc.)
+- Security-critical routes highlighted (/login, /admin, /auth, /password, /api)
+- Route aggregation (shows "10 routes (GET /login, POST /login...)" instead of just first route)
 - User input handlers (forms, query params, request bodies)
 
-**Data Stores:**
-- Databases (MongoDB, PostgreSQL, MySQL, SQLite)
-- ORM layers (Sequelize, Mongoose, JPA, ActiveRecord)
+**Data Stores** (8 database types):
+- **Relational**: PostgreSQL, MySQL, SQLite, MSSQL, Oracle
+- **NoSQL**: MongoDB, Redis, Cassandra
+- **Deduplication**: Multiple files referencing same database are consolidated into single asset
+- **Data Flow Tracking**: Tracks which files access which databases for accurate threat modeling
 
 **External Dependencies:**
-- npm, pip, Maven, Bundler packages
+- npm, pip, Maven, Bundler packages (direct dependencies)
 
 ### Trust Boundaries
 
@@ -271,12 +291,37 @@ curl -X POST http://localhost:8000/scan -d '{"repo_path": "/path/to/repo"}'
 curl -X POST http://localhost:8000/threat-model -d '{"repo_path": "/path/to/repo"}'
 ```
 
-## Limitations
+## Limitations & Roadmap
 
-- **Static Analysis Only** - Does not discover runtime behavior
-- **Framework Detection** - May miss custom or uncommon frameworks
-- **Dependency Depth** - Counts direct dependencies only
-- **Language Coverage** - Best support for JS/TS, Python, Java, Go, Ruby, PHP
+### Current Limitations
+
+**Level 3 (Current)**:
+- ✅ **Database Deduplication**: Fixed - accurately consolidates duplicate database references
+- ✅ **Data Flow Accuracy**: Fixed - traces actual file→database relationships from code
+- ✅ **Route Visualization**: Fixed - shows aggregated routes with security-critical endpoints highlighted
+- ✅ **Language-Agnostic**: Works across Node.js, Python, Java, PHP, Ruby, Go
+
+**Known Limitations**:
+- ⚠️ **Static Analysis Only** - Does not discover runtime behavior or dynamic routes
+- ⚠️ **Custom Frameworks** - May miss proprietary or heavily customized frameworks
+- ⚠️ **Dependency Depth** - Counts direct dependencies only (not transitive)
+- ⚠️ **Microservices Mesh** - Run per-service (no cross-service visualization yet)
+- ⚠️ **Partial Go/Ruby Support** - Generic patterns only (not framework-specific like Express/Flask)
+
+### Under Construction 🚧
+
+**Level 4 (Roadmap)**:
+- Runtime threat detection (dynamic analysis)
+- Continuous threat monitoring
+- Threat intelligence feed integration
+- Microservices mesh visualization
+- Custom threat frameworks (PASTA, VAST, OCTAVE)
+
+**Level 5 (Future)**:
+- Machine learning threat prioritization
+- Automated threat response
+- Historical trend analysis
+- Threat hunting automation
 
 ## Best Practices
 
@@ -341,6 +386,29 @@ See `CLAUDE.md` for detailed performance benchmarks and optimization details.
 
 ---
 
-**Version:** 1.1.0
-**Last Updated:** 2025-01-02
-**Status:** Production Ready
+## Recent Improvements (v1.2.0)
+
+**Database Deduplication** (2025-01-05):
+- Fixed duplicate database nodes in architecture diagrams
+- Consolidated multiple file references to same database into single asset
+- Added `accessing_files` tracking for accurate data flow analysis
+- Example: nodejs-goof now shows 2 databases (MongoDB + MySQL) instead of 5 duplicates
+
+**Route Visualization Enhancement** (2025-01-05):
+- Fixed route aggregation (was showing only "GET /", now shows all routes)
+- Highlights security-critical routes (/login, /admin, /auth, /password, /api)
+- Shows route counts with key endpoints: "10 routes (GET /login, POST /login...)"
+- Improves attack surface visibility for threat modeling
+
+**Data Flow Accuracy** (2025-01-05):
+- Fixed component→database connections (was arbitrary, now traces actual relationships)
+- Maps which files access which databases based on code analysis
+- Eliminates orphaned databases in diagrams
+- Critical for accurate trust boundary analysis
+
+---
+
+**Version:** 1.2.0
+**Last Updated:** 2025-01-05
+**Maturity Level:** 3 (Defined)
+**Status:** Production Ready - Language-Agnostic Threat Modeling

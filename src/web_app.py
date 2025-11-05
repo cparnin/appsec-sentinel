@@ -424,14 +424,44 @@ def generate_threat_model():
         logger.error(f"Threat model generation error: {e}")
         return jsonify({'error': f'Threat model generation failed: {str(e)}'}), 500
 
+def _find_most_recent_scan_output():
+    """Find the most recent scan output directory across all repos."""
+    from config import BASE_OUTPUT_DIR
+    output_base = Path(BASE_OUTPUT_DIR)
+
+    if not output_base.exists():
+        return None
+
+    # Find all scan directories (they have timestamps in their names)
+    all_scan_dirs = []
+    for repo_dir in output_base.glob('*'):
+        if repo_dir.is_dir():
+            for branch_dir in repo_dir.glob('*'):
+                if branch_dir.is_dir() and (branch_dir / 'report.html').exists():
+                    all_scan_dirs.append(branch_dir)
+
+    if not all_scan_dirs:
+        return None
+
+    # Return the most recently modified directory
+    return max(all_scan_dirs, key=lambda p: p.stat().st_mtime)
+
 @app.route('/report', methods=['GET'])
 def get_html_report():
     """Serve the generated HTML report."""
     try:
         global LAST_SCAN_OUTPUT_DIR
 
+        # If LAST_SCAN_OUTPUT_DIR is not set, try to find the most recent scan
         if LAST_SCAN_OUTPUT_DIR is None:
-            return jsonify({'error': 'No scan has been run yet. Please run a scan first.'}), 404
+            logger.info("LAST_SCAN_OUTPUT_DIR is None - attempting to find most recent scan for HTML report")
+            LAST_SCAN_OUTPUT_DIR = _find_most_recent_scan_output()
+
+            if LAST_SCAN_OUTPUT_DIR is None:
+                logger.error("No scan output directories found for HTML report")
+                return jsonify({'error': 'No scan has been run yet. Please run a scan first.'}), 404
+
+            logger.info(f"Auto-detected most recent scan for HTML report: {LAST_SCAN_OUTPUT_DIR}")
 
         report_path = Path(LAST_SCAN_OUTPUT_DIR) / "report.html"
         if not report_path.exists():
@@ -453,8 +483,16 @@ def get_report_file(filename):
     try:
         global LAST_SCAN_OUTPUT_DIR
 
+        # If LAST_SCAN_OUTPUT_DIR is not set, try to find the most recent scan
         if LAST_SCAN_OUTPUT_DIR is None:
-            return jsonify({'error': 'No scan has been run yet. Please run a scan first.'}), 404
+            logger.info("LAST_SCAN_OUTPUT_DIR is None - attempting to find most recent scan")
+            LAST_SCAN_OUTPUT_DIR = _find_most_recent_scan_output()
+
+            if LAST_SCAN_OUTPUT_DIR is None:
+                logger.error("No scan output directories found")
+                return jsonify({'error': 'No scan has been run yet. Please run a scan first.'}), 404
+
+            logger.info(f"Auto-detected most recent scan: {LAST_SCAN_OUTPUT_DIR}")
 
         # Security: Only allow specific file types
         allowed_files = {
@@ -465,6 +503,7 @@ def get_report_file(filename):
         }
 
         if filename not in allowed_files:
+            logger.warning(f"Attempted to access disallowed file: {filename}")
             return jsonify({'error': 'File not allowed'}), 403
 
         output_dir = Path(LAST_SCAN_OUTPUT_DIR)
@@ -476,8 +515,19 @@ def get_report_file(filename):
         else:
             file_path = output_dir / filename
 
+        logger.info(f"Attempting to serve file: {file_path}")
+        logger.info(f"File exists: {file_path.exists()}")
+        logger.info(f"LAST_SCAN_OUTPUT_DIR: {LAST_SCAN_OUTPUT_DIR}")
+
         if not file_path.exists():
-            return jsonify({'error': 'File not found'}), 404
+            logger.error(f"File not found: {file_path}")
+            logger.error(f"Directory contents: {list(output_dir.glob('*')) if output_dir.exists() else 'Directory does not exist'}")
+            return jsonify({
+                'error': 'File not found',
+                'requested_file': str(file_path),
+                'output_dir': str(output_dir),
+                'file_exists': file_path.exists()
+            }), 404
 
         response = send_file(file_path, as_attachment=True)
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -486,7 +536,7 @@ def get_report_file(filename):
         return response
 
     except Exception as e:
-        logger.error(f"File error: {e}")
+        logger.error(f"File error: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(404)
