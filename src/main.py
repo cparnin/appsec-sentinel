@@ -1223,12 +1223,12 @@ def run_tool_ingestion_mode() -> None:
     Enhances existing project tool results.
     """
     if TOOL_INGESTION_AVAILABLE:
-        if Path("projects/project_exports").exists():
+        if Path("tool-ingestion").exists():
             print("🔄 Enhancing project tool results...")
             asyncio.run(ingest_project_tools())
             print("✅ Enhanced results available in outputs/")
         else:
-            print("❌ No projects/project_exports/ directory found. Place tool exports there first.")
+            print("❌ No tool-ingestion/ directory found. Place tool exports there first.")
     else:
         print("❌ Tool ingestion not available")
 

@@ -43,7 +43,7 @@ git push
 - ✅ **Separate PRs** for code fixes vs dependency updates
 - ✅ **HTML reports** with business impact analysis
 - ✅ **Auto SBOM** (CycloneDX & SPDX) for compliance
-- ✅ **Artifacts** - Reports and SBOM files (90-day retention)
+- ✅ **Artifacts** - Reports and SBOM files (30-day retention)
 
 ## Configuration Options
 
@@ -78,7 +78,7 @@ with:
 | No PR created | Verify `contents: write` and `pull-requests: write` in Settings → Actions → Workflow permissions |
 | AI fix failed | Check AWS_REGION matches INFERENCE_PROFILE_ID region |
 | Scan timeout | Large repo? Try `scan-level: 'critical-high'` to reduce findings |
-| No artifacts | Check Actions tab → workflow run → Artifacts section (90-day retention) |
+| No artifacts | Check Actions tab → workflow run → Artifacts section (30-day retention) |
 
 ## Support
 

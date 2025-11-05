@@ -28,6 +28,7 @@ wheels/
 # IDE
 .vscode/
 .idea/
+.claude/
 
 # Security tool binaries (should be installed separately)
 bin/
@@ -42,9 +43,9 @@ reports/
 archive/
 scan_output.txt
 
-# Project exports (when testing tool ingestion)
-projects/project_exports/*.json
-projects/project_exports/*.xml
+# Tool ingestion exports (external security tool results)
+tool-ingestion/*.json
+tool-ingestion/*.xml
 
 # Environment/config
 .env

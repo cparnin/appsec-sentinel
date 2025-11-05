@@ -1,4 +1,4 @@
-# Project Tool Exports
+# External Tool Ingestion
 
 Drop JSON exports from existing security tools here for enhancement with AppSec-Sentinel's cross-file analysis.
 
@@ -7,14 +7,14 @@ Drop JSON exports from existing security tools here for enhancement with AppSec-
 1. **Export from your security tool:**
 ```bash
 # Snyk
-snyk test --json > projects/project_exports/snyk_export.json
+snyk test --json > tool-ingestion/snyk_export.json
 
 # SonarQube
 curl "https://sonarqube.example.com/api/issues/search?componentKeys=myproject" \
-  > projects/project_exports/sonar_export.json
+  > tool-ingestion/sonar_export.json
 
 # Veracode (export from web UI to JSON)
-# Place in projects/project_exports/veracode_export.json
+# Place in tool-ingestion/veracode_export.json
 ```
 
 2. **Run ingestion + enhancement:**
@@ -54,7 +54,7 @@ Any security tool with JSON export works with basic field mapping:
 
 ```bash
 # Project already uses Snyk
-snyk test --json > projects/project_exports/snyk_export.json
+snyk test --json > tool-ingestion/snyk_export.json
 
 # Enhance with AppSec-Sentinel
 python src/tool_ingestion.py

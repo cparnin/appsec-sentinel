@@ -457,13 +457,13 @@ async def ingest_project_tools(config_file: str = None) -> Dict[str, Any]:
         {
             "tool": "snyk",
             "params": {
-                "file_path": "projects/project_exports/snyk_export.json"
+                "file_path": "tool-ingestion/snyk_export.json"
             }
         },
         {
             "tool": "veracode",
             "params": {
-                "file_path": "projects/project_exports/veracode_export.json"
+                "file_path": "tool-ingestion/veracode_export.json"
             }
         }
     ]
