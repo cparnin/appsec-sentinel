@@ -16,10 +16,7 @@ outputs/
           │   ├── sbom.cyclonedx.json
           │   └── sbom.spdx.json
           ├── report.html             # Interactive HTML report
-          ├── pr-findings.txt         # PR summary for auto-remediation
-          ├── threat_model.json       # Structured threat data (STRIDE)
-          ├── THREAT_MODEL.md         # Human-readable threat report
-          └── architecture.mermaid    # Visual architecture diagram
+          └── pr-findings.txt         # PR summary for auto-remediation
 ```
 
 ### Smart Path Resolution (`src/path_utils.py`)
@@ -268,68 +265,6 @@ run_eslint(repo_path, str(output_path / "raw"))
 | PHPStan | Code Quality | phpstan.json | ✅ Compatible |
 
 **Future Scanners:** Automatically compatible if they follow the template pattern
-
-## Threat Modeling Architecture
-
-### Overview
-
-Automated threat modeling generates STRIDE analysis, architecture diagrams, and attack surface assessments. Integrates with security scan findings to provide architectural context.
-
-### Components
-
-**Core Module:** `src/threat_modeling/threat_analyzer.py`
-
-**Capabilities:**
-- Framework detection (Express, Flask, Spring, Django, Rails, Laravel, FastAPI)
-- Entry point discovery (HTTP routes, API endpoints, input handlers)
-- Data store identification (databases, ORMs)
-- Trust boundary mapping
-- STRIDE threat categorization
-- Mermaid diagram generation
-
-### Output Files
-
-```
-outputs/{repo}/{branch}/
-  ├── threat_model.json       # Structured JSON with STRIDE analysis
-  ├── THREAT_MODEL.md         # Human-readable markdown report
-  └── architecture.mermaid    # Visual architecture diagram
-```
-
-### Integration Points
-
-**CLI:** `src/main.py` - Menu option for threat model generation
-**Web:** `src/web_app.py` - `/threat-model` POST endpoint
-**MCP:** `mcp/appsec_mcp_server.py` - `generate_threat_model` tool
-
-### Processing Flow
-
-```
-Repository Analysis
-    ↓
-Framework/Component Detection
-    ↓
-Entry Point & Data Store Discovery
-    ↓
-Trust Boundary Identification
-    ↓
-STRIDE Mapping (with security findings)
-    ↓
-Threat Scenario Generation
-    ↓
-Export (JSON + Markdown + Mermaid)
-```
-
-### STRIDE Categories
-
-- **Spoofing** - Authentication bypass, identity theft
-- **Tampering** - SQL injection, XSS, CSRF, data integrity
-- **Repudiation** - Audit logging, non-repudiation
-- **Information Disclosure** - Secrets, sensitive data exposure
-- **Denial of Service** - Resource exhaustion, availability
-- **Elevation of Privilege** - Authorization bypass, RCE
-
-See [THREAT_MODELING.md](THREAT_MODELING.md) for full documentation.
 
 ## Future Enhancements
 

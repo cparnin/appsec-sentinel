@@ -823,14 +823,13 @@ def show_interactive_menu() -> str:
     """Show interactive menu and return user choice"""
     print("🎯 Choose an option:")
     print("   [1] Security scan with auto-fixes + SBOM")
-    print("   [2] Generate threat model (STRIDE analysis)")
     print("   [q] Quit")
 
     while True:
-        choice = input("\nEnter your choice [1-2, q]: ").strip().lower()
-        if choice in ['1', '2', 'q']:
+        choice = input("\nEnter your choice [1, q]: ").strip().lower()
+        if choice in ['1', 'q']:
             return choice
-        print("Invalid choice. Please enter 1, 2, or q")
+        print("Invalid choice. Please enter 1 or q")
 
 def select_scan_level() -> str:
     """Let user choose severity level for scanning"""
@@ -1213,112 +1212,6 @@ def run_security_scan_mode(repo_path: str) -> None:
     logger.info("✅ Completed handle_auto_remediation from main choice 1")
 
 
-def run_threat_modeling_mode() -> None:
-    """
-    Execute threat modeling mode (interactive menu choice 2).
-    Generates STRIDE threat analysis for a repository.
-    """
-    print("\n🛡️  Generating Threat Model (STRIDE Analysis)...")
-
-    try:
-        from threat_modeling import ThreatAnalyzer
-
-        # Select repository
-        repo_path = select_repository()
-        if not repo_path:
-            return
-
-        # Set up output directory with repo/branch structure
-        output_path = get_output_path(repo_path, BASE_OUTPUT_DIR)
-        output_dirs = setup_output_directories(output_path)
-        output_dir = output_dirs['base']
-
-        print(f"📁 Output directory: {output_dir}")
-
-        # Create progress bar for threat modeling
-        console = Console()
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            console=console,
-            transient=False
-        ) as progress:
-            # Define threat modeling stages
-            stages = [
-                ("🔍 Discovering architecture components", 20),
-                ("📊 Mapping attack surface", 15),
-                ("🎯 Applying STRIDE framework", 25),
-                ("🔒 Identifying trust boundaries", 10),
-                ("⚠️  Generating threat scenarios", 20),
-                ("📝 Exporting threat model files", 10)
-            ]
-
-            total_steps = sum(weight for _, weight in stages)
-            task = progress.add_task("[cyan]Threat modeling in progress...", total=total_steps)
-
-            # Stage 1: Check for existing scan results and discover architecture
-            progress.update(task, description=stages[0][0])
-            findings = []
-            raw_dir = output_dir / "raw"
-            if raw_dir.exists():
-                console.print("📊 Loading existing scan results for enhanced analysis...")
-                for json_file in raw_dir.glob("*.json"):
-                    try:
-                        with open(json_file) as f:
-                            data = json.load(f)
-                            if isinstance(data, dict) and 'results' in data:
-                                findings.extend(data['results'])
-                            elif isinstance(data, list):
-                                findings.extend(data)
-                    except Exception as e:
-                        logger.debug(f"Could not load {json_file}: {e}")
-
-            analyzer = ThreatAnalyzer(repo_path)
-            time.sleep(0.5)  # Brief pause for visual feedback
-            progress.advance(task, stages[0][1])
-
-            # Stage 2-5: Generate threat model (combines architecture, attack surface, STRIDE, boundaries, scenarios)
-            for i in range(1, 5):
-                progress.update(task, description=stages[i][0])
-                if i == 1:
-                    # Start the actual analysis
-                    pass
-                time.sleep(0.3)  # Brief pause for visual feedback
-                progress.advance(task, stages[i][1])
-
-            # Run the actual threat model generation
-            threat_model = analyzer.analyze(findings)
-
-            # Stage 6: Export files
-            progress.update(task, description=stages[5][0])
-            exported_files = analyzer.export_threat_model(threat_model, str(output_dir))
-            progress.advance(task, stages[5][1])
-
-        # Display summary
-        summary = threat_model['summary']
-        print(f"\n✅ Threat Model Generated!")
-        print(f"   • Total Threats: {summary['total_threats']}")
-        print(f"   • Attack Surface Risk: {summary['attack_surface_score']}")
-        print(f"   • Overall Risk Level: {summary['risk_level']}")
-        print(f"\n📄 Reports generated:")
-        print(f"   • JSON: {exported_files['json']}")
-        print(f"   • Markdown: {exported_files['markdown']}")
-        print(f"   • Diagram: {exported_files['diagram']}")
-
-        # Show STRIDE breakdown
-        print(f"\n🎯 STRIDE Threat Breakdown:")
-        for category, count in summary['stride_breakdown'].items():
-            if count > 0:
-                print(f"   • {category.replace('_', ' ')}: {count}")
-
-    except ImportError:
-        print("❌ Threat modeling module not available")
-        logger.error("Failed to import threat_modeling module")
-    except Exception as e:
-        print(f"❌ Threat model generation failed: {e}")
-        logger.error(f"Threat modeling error: {e}", exc_info=True)
 
 
 def track_usage() -> None:
@@ -1421,10 +1314,6 @@ def main() -> None:
             if not repo_path:
                 return
             run_security_scan_mode(repo_path)
-
-        elif choice == '2':
-            # Generate threat model
-            run_threat_modeling_mode()
 
     except KeyboardInterrupt:
         print("\n\n👋 Scan cancelled by user")

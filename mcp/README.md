@@ -82,8 +82,6 @@ Show cross-file analysis for WebGoat
 
 Auto-fix vulnerabilities in nodejs-goof and create PRs
 
-Generate threat model for my-application
-
 Generate SBOM for my-project
 
 Assess business impact for vulnerabilities in WebGoat
@@ -106,7 +104,6 @@ Assess business impact for vulnerabilities in WebGoat
 | `cross_file_analysis` | Attack chain detection | Repo name | Cross-file vulnerabilities, tech stack |
 | `assess_business_impact` | Risk assessment | Repo name | Risk level, recommendations |
 | `generate_sbom` | Software BOM | Repo name | CycloneDX & SPDX summaries |
-| `generate_threat_model` | STRIDE threat analysis | Repo name | Architecture, threats, risk level |
 
 ## Smart Repository Discovery
 

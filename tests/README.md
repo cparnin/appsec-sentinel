@@ -26,9 +26,8 @@ pytest tests/test_appsec.py --cov=src --cov-report=html
 | Gitleaks Scanner | ✅ 4 tests | Secrets detection |
 | Semgrep Scanner | ✅ 4 tests | SAST analysis |
 | Trivy Scanner | ✅ 3 tests | Dependency scanning |
-| Threat Modeling | ✅ 8 tests | STRIDE analysis, export, diagrams |
 
-**Total: 43 tests** covering all major functionality
+**Total: 35 tests** covering all major functionality
 
 ## File Structure
 

@@ -1,12 +1,11 @@
 # AppSec-Sentinel
 
-All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, Threat Model Creation, AI Code Fixes, Claude Desktop MCP Integration (with POC exploit capability), Attack Chain Analysis, CLI/Web/CICD Modes, Reporting
+All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, AI Code Fixes, Claude Desktop MCP Integration (with POC exploit capability), Attack Chain Analysis, CLI/Web/CICD Modes, Reporting
 > 📖 **Open Source** - Licensed under the MIT License. Free for personal and commercial use.
 
 ## Features
 
 - **Multi-Scanner Engine** - Semgrep (SAST), Gitleaks (secrets), Trivy (dependencies) + code quality linters
-- **Threat Modeling** - Automated STRIDE analysis, architecture mapping, and attack surface assessment
 - **Code Quality Scanning** - ESLint, Pylint, Checkstyle, golangci-lint, RuboCop with bundled configs (no project setup needed)
 - **Auto-Remediation** - Creates GitHub PRs with LLM-generated code fixes using OpenAI/Claude/Bedrock (optional)
 - **Cross-File Analysis** - Traces attack chains across multiple files and languages
@@ -90,9 +89,8 @@ git push
 
 1. **Scan** - Runs 3 scanners in parallel (SAST, secrets, dependencies)
 2. **Analyze** - Cross-file AST analysis identifies attack chains across files using graph traversal
-3. **Threat Model** - STRIDE analysis maps vulnerabilities to architectural threats using static analysis
-4. **Remediate** - LLM generates fixes and creates separate PRs for code vs dependencies (requires API keys)
-5. **Report** - HTML reports + SBOM files + threat models (CycloneDX & SPDX)
+3. **Remediate** - LLM generates fixes and creates separate PRs for code vs dependencies (requires API keys)
+4. **Report** - HTML reports + SBOM files (CycloneDX & SPDX)
 
 <img width="252" height="119" alt="Screenshot 2025-11-05 at 10 16 50 AM" src="https://github.com/user-attachments/assets/0ca6a638-b6a1-49dc-8402-52b8642c1650" />
 
@@ -122,9 +120,9 @@ Turn Claude Desktop into a conversational security expert - scan, analyze, and a
 
 > 💡 Credentials in `mcp/mcp_env`
 
-**15 MCP Tools Available:**
+**14 MCP Tools Available:**
 - **Core:** `scan_repository` • `auto_remediate` • `get_report` • `view_report_html` • `health_check`
-- **Analysis:** `cross_file_analysis` • `assess_business_impact` • `generate_sbom` • `generate_threat_model`
+- **Analysis:** `cross_file_analysis` • `assess_business_impact` • `generate_sbom`
 - **API Tools:** `get_scan_findings` • `get_semgrep_findings` • `get_trivy_findings` • `get_gitleaks_findings` • `get_code_quality_findings` • `get_sbom_data`
 
 **Usage:** "Scan <insert repo name> for vulnerabilities" → detailed findings with file paths, line numbers, remediation
@@ -151,42 +149,6 @@ Traces attack paths across multiple files and languages:
 
 <img width="1064" height="234" alt="Screenshot 2025-11-05 at 10 19 58 AM" src="https://github.com/user-attachments/assets/3bec2886-8000-49ad-a805-b9e27d3cbfb0" />
 
-## Threat Modeling
-
-> **Maturity Level: 3 (Defined)** - Production-ready with accurate asset inventory and data flow analysis
-
-Automated STRIDE threat analysis that maps your application's attack surface:
-
-- **Architecture Discovery** - Auto-detects routes, databases, and trust boundaries from code (language-agnostic)
-- **STRIDE Analysis** - Identifies spoofing, tampering, repudiation, information disclosure, denial of service, and elevation of privilege threats
-- **Visual Diagrams** - Generates Mermaid architecture diagrams with color-coded risk levels and actual data flows
-
-**Supported Architectures:**
-- ✅ **Traditional Web Apps**: Express, Flask, Django, Spring, Laravel, FastAPI, Rails
-- ✅ **Monoliths**: Single repo, 3-tier architecture
-- ✅ **Databases**: PostgreSQL, MySQL, MongoDB, Redis, SQLite, MSSQL, Oracle, Cassandra
-- ⚠️ **Microservices**: Run per-service (no cross-service mesh yet)
-- ⚠️ **Partial**: Go, Rust (generic HTTP detection only)
-
-**Known Limitations:**
-- ❌ **Not supported**: ASP.NET/C#, Kotlin, NestJS, Koa, Hapi, GraphQL, gRPC, WebSockets, Serverless (Lambda/Cloud Functions)
-- ❌ **Architecture gaps**: API gateways, message queues (Kafka/RabbitMQ), external API dependencies, service mesh
-- ⚠️ **Scalability**: Large apps (100+ routes) produce crowded diagrams - best for focused analysis
-- ⚠️ **Dynamic routing**: May miss programmatically generated routes or middleware-defined endpoints
-- ⚠️ **Complex DB**: Environment variable URLs, multi-tenant setups, read replicas not fully distinguished
-
-**Best Used For:**
-- ✅ Initial architecture security review
-- ✅ Identifying trust boundaries and entry points
-- ✅ STRIDE threat categorization
-- ✅ Generating discussion materials for threat modeling sessions
-- ⚠️ **Manual validation recommended** - Use diagrams as starting point, not final authority
-
-<img width="503" height="564" alt="Screenshot 2025-11-05 at 2 38 47 PM" src="https://github.com/user-attachments/assets/e77672f8-e7c1-44f3-8a91-0f7e013e2392" />
-
-[Full threat modeling guide →](THREAT_MODELING.md)
-
-## Architecture
 
 See [Architecture Diagram →](ARCHITECTURE.md)
 
@@ -292,7 +254,6 @@ APPSEC_AUTO_FIX_MODE=3  # 1=SAST, 2=deps, 3=both, 4=scan only
 
 ## Documentation
 
-- **[Threat Modeling](THREAT_MODELING.md)** - Automated threat analysis using STRIDE framework
 - **[MCP Setup](mcp/README.md)** - Model Context Protocol integration
 - **[Architecture](ARCHITECTURE.md)** - System architecture and design patterns
 
@@ -304,7 +265,7 @@ A: All fixes require manual review via PR. We use deterministic LLM settings (te
 
 **Q: What data gets sent to LLM providers?**
 
-A: Only vulnerability metadata (file path, line number, vulnerability type, code snippet). **Never** your full codebase. Secrets are flagged locally and **never** sent to LLMs. You control which findings trigger LLM analysis. Note: Scanning, cross-file analysis, and threat modeling run **100% locally** with zero API calls.
+A: Only vulnerability metadata (file path, line number, vulnerability type, code snippet). **Never** your full codebase. Secrets are flagged locally and **never** sent to LLMs. You control which findings trigger LLM analysis. Note: Scanning and cross-file analysis run **100% locally** with zero API calls.
 
 **Q: Which mode should I use?**
 
@@ -321,16 +282,12 @@ A: No - security scanning works without any linters. Code quality is **optional*
 
 **Q: How is this different from other security scanners?**
 
-A: **Cross-file attack chain detection** - we trace vulnerabilities across multiple files and languages using AST analysis and graph traversal, not just single-file pattern matching. Plus automated threat modeling (STRIDE), optional LLM-generated fixes, and zero-config SBOM generation.
+A: **Cross-file attack chain detection** - we trace vulnerabilities across multiple files and languages using AST analysis and graph traversal, not just single-file pattern matching. Plus optional LLM-generated fixes and zero-config SBOM generation.
 
-**Q: What does automated threat modeling do?**
-
-A: Generates STRIDE threat analysis, architecture diagrams, and attack surface assessment. **What it does:** Extracts real routes (GET /api/users), detects database types (PostgreSQL, MongoDB), maps components with file paths, color-codes vulnerabilities by severity, identifies trust boundaries. **What it can't do:** Doesn't replace manual threat modeling by security architects. Framework support varies - full route extraction for Express, Flask, Django, Spring, Laravel, FastAPI. Partial support for Rails, Go, Rust (generic endpoints only). No C#/Kotlin support yet. See [THREAT_MODELING.md](THREAT_MODELING.md) for details.
 
 **Q: Are external dependencies locked for stability?**
 
 A: Yes. All external dependencies use locked versions with SRI integrity hashes to prevent breaking changes:
-- **Mermaid.js**: Locked to v10.9.0 (threat model diagrams)
 - **Python packages**: Pinned in `requirements.txt`
 - **Fallback CDNs**: Multiple sources for resilience
 - **Version detection**: Auto-adapts to API changes between major versions
