@@ -32,8 +32,12 @@ REPO_SEARCH_PATHS=/path/to/repos
 
 # Scanning Configuration (optional)
 APPSEC_SCAN_LEVEL=critical-high
+APPSEC_CODE_QUALITY=false
 APPSEC_DEBUG=false
 
 # MCP Timeout Configuration (optional)
+# NOTE: Claude Desktop has a 4-minute client timeout. Keep scans under 4 minutes by:
+#       - Using APPSEC_SCAN_LEVEL=critical-high (not "all")
+#       - Setting APPSEC_CODE_QUALITY=false (code quality linters are slow)
 # MCP_SCAN_TIMEOUT=300           # Scan timeout in seconds (default: 300 = 5 minutes)
 # MCP_REMEDIATE_TIMEOUT=600      # Auto-remediation timeout in seconds (default: 600 = 10 minutes)
