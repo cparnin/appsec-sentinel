@@ -42,7 +42,9 @@ import time
 import subprocess
 import json
 from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
+from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
 from rich.console import Console
+from rich.prompt import Prompt, Confirm
 
 # Import configuration constants
 from config import (
@@ -322,7 +324,7 @@ def select_repository() -> str:
     print("   [3] Enter path manually")
 
     while True:
-        choice = input("\nChoose repository option [1-3]: ").strip()
+        choice = Prompt.ask("\nChoose repository option", choices=["1", "2", "3"])
 
         if choice == '1':
             repo_path = os.getcwd()
@@ -387,10 +389,10 @@ def select_repository() -> str:
                     print(f"   [{idx}] {name} ({display_path})")
 
                 while True:
+                    repo_choice = Prompt.ask(f"\nChoose repository [1-{len(repos)}] or 'q' to go back")
+                    if repo_choice.lower() == 'q':
+                        break
                     try:
-                        repo_choice = input(f"\nChoose repository [1-{len(repos)}] or 'q' to go back: ").strip()
-                        if repo_choice.lower() == 'q':
-                            break
                         idx = int(repo_choice) - 1
                         if 0 <= idx < len(repos):
                             repo_path = repos[idx][1]
@@ -405,7 +407,7 @@ def select_repository() -> str:
                 print(f"Searched: {', '.join([p for p in search_paths if os.path.exists(p)])}")
                 
         elif choice == '3':
-            repo_path = input("\nEnter repository path: ").strip()
+            repo_path = Prompt.ask("\nEnter repository path").strip()
             if repo_path and Path(repo_path).exists():
                 if Path(repo_path).is_dir():
                     print(f"Selected: {repo_path}")
@@ -417,7 +419,7 @@ def select_repository() -> str:
         else:
             print("Invalid choice. Please enter 1, 2, or 3")
 
-def run_security_scans(repo_path: str, scanners_to_run: List[str], output_dir: Path, scan_level: str = None) -> List[Dict[str, Any]]:
+def run_security_scans(repo_path: str, scanners_to_run: List[str], output_dir: Path, scan_level: str = None, enable_code_quality: bool = None) -> List[Dict[str, Any]]:
     """
     Synchronous wrapper for async scanner execution.
 
@@ -428,12 +430,17 @@ def run_security_scans(repo_path: str, scanners_to_run: List[str], output_dir: P
         scanners_to_run: List of scanners to run
         output_dir: Output directory for results
         scan_level: Scan level ('critical-high' or 'all'), defaults to env var or 'critical-high'
+        enable_code_quality: Whether to run code quality linters (defaults to env var APPSEC_CODE_QUALITY or True)
     """
     if scan_level is None:
         scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high')
-    return asyncio.run(run_security_scans_async(repo_path, scanners_to_run, output_dir, scan_level))
+    
+    if enable_code_quality is None:
+        enable_code_quality = os.getenv('APPSEC_CODE_QUALITY', 'true').lower() == 'true'
 
-async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], output_dir: Path, scan_level: str = 'critical-high') -> List[Dict[str, Any]]:
+    return asyncio.run(run_security_scans_async(repo_path, scanners_to_run, output_dir, scan_level, enable_code_quality))
+
+async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], output_dir: Path, scan_level: str = 'critical-high', enable_code_quality: bool = True) -> List[Dict[str, Any]]:
     """
     Run the selected security scanners AND code quality linters in parallel.
 
@@ -445,19 +452,16 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
         scanners_to_run: List of scanners to run
         output_dir: Output directory for scan results
         scan_level: Scan level ('critical-high' or 'all') - ONLY affects security findings
-
-    Returns:
-        list: All findings from all scanners (security + code quality)
+        enable_code_quality: Whether to run code quality linters
     """
     # Ensure output directories exist
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "raw").mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"🔍 run_security_scans_async - Using scan_level: {scan_level}")
+    logger.info(f"🔍 run_security_scans_async - Using scan_level: {scan_level}, code_quality: {enable_code_quality}")
 
     # Detect languages for code quality scanning (runs in parallel with security scans)
-    # Read directly from environment to support runtime changes (CLI/Web tool selection)
-    enable_code_quality = os.getenv('APPSEC_CODE_QUALITY', 'true').lower() == 'true'
+    # Uses the passed argument instead of environment variable
     detected_languages = set()
     if enable_code_quality:
         try:
@@ -476,7 +480,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
         scanner_tasks.append({
             'name': 'semgrep',
             'display_name': 'Semgrep (SAST)',
-            'func': lambda sl=scan_level: run_semgrep(repo_path, str(output_dir / "raw"), sl),
+            'func': lambda sl=scan_level, cq=enable_code_quality: run_semgrep(repo_path, str(output_dir / "raw"), sl, code_quality=cq),
             'category': 'security'
         })
 
@@ -492,7 +496,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
         scanner_tasks.append({
             'name': 'trivy',
             'display_name': 'Trivy (Dependencies)',
-            'func': lambda: run_trivy_scan(repo_path, str(output_dir / "raw")),
+            'func': lambda sl=scan_level: run_trivy_scan(repo_path, str(output_dir / "raw"), scan_level=sl),
             'category': 'security'
         })
 
@@ -676,10 +680,11 @@ def run_auto_mode() -> List[Dict[str, Any]]:
 
     # Get scan level from environment for CI/CD consistency
     scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high')
+    enable_code_quality = os.getenv('APPSEC_CODE_QUALITY', 'true').lower() == 'true'
     print(f"🔍 Scan level: {scan_level}")
 
     # Run scanners in parallel
-    all_findings = run_security_scans(str(repo_path), scanners_to_run, output_dir, scan_level)
+    all_findings = run_security_scans(str(repo_path), scanners_to_run, output_dir, scan_level, enable_code_quality)
     
     # Generate reports with cross-file enhancement (same as interactive mode)
     if all_findings:
@@ -826,7 +831,7 @@ def show_interactive_menu() -> str:
     print("   [q] Quit")
 
     while True:
-        choice = input("\nEnter your choice [1, q]: ").strip().lower()
+        choice = Prompt.ask("\nEnter your choice [1, q]", choices=["1", "q"])
         if choice in ['1', 'q']:
             return choice
         print("Invalid choice. Please enter 1 or q")
@@ -838,7 +843,7 @@ def select_scan_level() -> str:
     print("   [2] All severity levels (More findings, may include noise)")
 
     while True:
-        choice = input("\nChoose severity level [1-2]: ").strip()
+        choice = Prompt.ask("\nChoose severity level", choices=["1", "2"])
         if choice == '1':
             return 'critical-high'
         elif choice == '2':
@@ -857,7 +862,7 @@ def select_tools() -> set:
     print("   [6] Custom selection...")
 
     while True:
-        choice = input("\nChoose tool selection [1-6]: ").strip()
+        choice = Prompt.ask("\nChoose tool selection", choices=["1", "2", "3", "4", "5", "6"])
 
         if choice == '1':
             return {'semgrep', 'trivy', 'gitleaks', 'code_quality', 'sbom'}
@@ -874,19 +879,19 @@ def select_tools() -> set:
             print("\n📋 Select individual tools (y/n):")
             tools = set()
 
-            if input("   Run Semgrep (SAST)? [Y/n]: ").strip().lower() != 'n':
+            if Confirm.ask("   Run Semgrep (SAST)?", default=True):
                 tools.add('semgrep')
 
-            if input("   Run Trivy (Dependencies/SCA)? [Y/n]: ").strip().lower() != 'n':
+            if Confirm.ask("   Run Trivy (Dependencies/SCA)?", default=True):
                 tools.add('trivy')
 
-            if input("   Run Gitleaks (Secrets)? [Y/n]: ").strip().lower() != 'n':
+            if Confirm.ask("   Run Gitleaks (Secrets)?", default=True):
                 tools.add('gitleaks')
 
-            if input("   Run Code Quality linters? [Y/n]: ").strip().lower() != 'n':
+            if Confirm.ask("   Run Code Quality linters?", default=True):
                 tools.add('code_quality')
 
-            if input("   Generate SBOM? [Y/n]: ").strip().lower() != 'n':
+            if Confirm.ask("   Generate SBOM?", default=True):
                 tools.add('sbom')
 
             if not tools:
@@ -899,7 +904,7 @@ def select_tools() -> set:
         else:
             print("Invalid choice. Please enter 1-6")
 
-def handle_auto_remediation(repo_path: str, all_findings: List[Dict[str, Any]], auto_choice: Optional[int] = None) -> dict:
+def handle_auto_remediation(repo_path: str, all_findings: List[Dict[str, Any]], auto_choice: Optional[int] = None, web_mode: bool = False, auto_fix_enabled: bool = None, auto_fix_mode_arg: str = None) -> dict:
     """Handle auto-remediation flow for findings"""
     total_findings = len(all_findings)
     critical_findings = len([f for f in all_findings if f.get('severity', '').lower() in ['critical']])
@@ -965,11 +970,16 @@ def handle_auto_remediation(repo_path: str, all_findings: List[Dict[str, Any]], 
         if auto_choice is not None:
             choice = str(auto_choice)
             print(f"🤖 Automated mode: Using option {choice}")
+            
         # Handle CI/CD and Web environments automatically
-        elif is_github_actions() or os.getenv('APPSEC_WEB_MODE', 'false').lower() == 'true':
-            # In CI environments, determine auto-fix behavior from environment variables
-            auto_fix_enabled = os.getenv('APPSEC_AUTO_FIX', 'false').lower() == 'true'
-            auto_fix_mode = os.getenv('APPSEC_AUTO_FIX_MODE', '')  # Optional specific mode override
+        # Priority: explicit arg > env var > default
+        elif is_github_actions() or web_mode or os.getenv('APPSEC_WEB_MODE', 'false').lower() == 'true':
+            # In CI environments, determine auto-fix behavior from structure
+            if auto_fix_enabled is None:
+                auto_fix_enabled = os.getenv('APPSEC_AUTO_FIX', 'false').lower() == 'true'
+            
+            # Use arg if provided, else env var
+            auto_fix_mode = auto_fix_mode_arg if auto_fix_mode_arg is not None else os.getenv('APPSEC_AUTO_FIX_MODE', '')
             
             if auto_fix_mode in ['1', '2', '3', '4']:
                 # Validate the mode makes sense given available findings
@@ -1013,7 +1023,7 @@ def handle_auto_remediation(repo_path: str, all_findings: List[Dict[str, Any]], 
         else:
             # Interactive mode for local development
             while True:
-                choice = input("\nChoose auto-fix option [1-4]: ").strip()
+                choice = Prompt.ask("\nChoose auto-fix option", choices=["1", "2", "3", "4"])
                 if choice in ['1', '2', '3', '4']:
                     break
                 print("Invalid choice. Please enter 1, 2, 3, or 4")

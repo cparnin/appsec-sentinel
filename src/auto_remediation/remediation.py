@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import openai
 import anthropic
+import google.generativeai as genai
 import boto3
 from datetime import datetime
 import logging
@@ -393,8 +394,19 @@ class AutoRemediator:
             # Test basic connectivity and permissions
             if os.getenv('APPSEC_DEBUG', '').lower() == 'true':
                 self._test_bedrock_connection()
+        elif self.ai_provider == 'gemini':
+            self.api_key = api_key or os.getenv('GEMINI_API_KEY')
+            if not self.api_key:
+                raise ValueError("GEMINI_API_KEY is required for Gemini provider")
+            genai.configure(api_key=self.api_key)
+            
+            if self.model is None or not self.model.startswith('gemini'):
+                if self.model is not None:
+                    logger.warning(f"Model '{self.model}' is not a valid Gemini model. Falling back to default.")
+                self.model = os.getenv('AI_MODEL', 'gemini-1.5-flash')
+            self.client = genai.GenerativeModel(self.model)
         else:
-            raise ValueError("Unsupported AI provider. Choose 'openai', 'claude', or 'aws_bedrock'.")
+            raise ValueError("Unsupported AI provider. Choose 'openai', 'claude', 'aws_bedrock', or 'gemini'.")
     
     def _test_bedrock_connection(self):
         """Test AWS Bedrock connection and permissions with minimal API call."""
@@ -517,6 +529,11 @@ Focus on business impact and urgency. Be direct and actionable. Don't use techni
                     
                     # Fallback to basic summary instead of failing completely
                     raise bedrock_error
+                    # Fallback to basic summary instead of failing completely
+                    raise bedrock_error
+            elif self.ai_provider == 'gemini':
+                response = self.client.generate_content(prompt)
+                return response.text.strip()
         except Exception as e:
             logger.error(f"Failed to generate executive summary: {e}")
             return f"Security scan found {total} findings ({critical} critical, {high} high severity). Immediate review recommended."
@@ -710,6 +727,10 @@ Focus on business impact and urgency. Be direct and actionable. Don't use techni
                         logger.error("      • Check CloudTrail logs for detailed error info")
                     
                     raise bedrock_error
+            elif self.ai_provider == 'gemini':
+                prompt = self._get_gemini_prompt(check_id, message, file_path, line_number, context_str)
+                response = self.client.generate_content(prompt)
+                fix = response.text.strip()
             else:
                 return None
             
@@ -759,6 +780,35 @@ Return: User.find({{ username: validator.escape(req.body.username) }}, callback)
 Corrected line {line_number}:"""
 
     def _get_claude_prompt(self, check_id, message, file_path, line_number, context_str):
+        return f"""
+You are an expert security engineer. Your task is to provide a single-line code fix for a security vulnerability.
+
+**Vulnerability Details:**
+- **Type:** {check_id}
+- **Description:** {message}
+- **File:** {file_path}
+- **Line:** {line_number} (The line to be replaced)
+
+**Code Context:**
+```
+{context_str}
+```
+
+**Instructions:**
+Based on the vulnerability and code context, provide the corrected line of code for line {line_number}.
+
+**IMPORTANT:**
+- Return **only** the single, corrected line of code.
+- Do **not** include the line number, markdown formatting (e.g., ```), code blocks, or any explanatory text.
+- The output must be the raw code that will directly replace the original line.
+
+**Example:**
+If the original line is `User.find({{ username: req.body.username }})`, the corrected output should be `User.find({{ username: validator.escape(req.body.username) }})`.
+
+**Corrected Code:**
+"""
+
+    def _get_gemini_prompt(self, check_id, message, file_path, line_number, context_str):
         return f"""
 You are an expert security engineer. Your task is to provide a single-line code fix for a security vulnerability.
 

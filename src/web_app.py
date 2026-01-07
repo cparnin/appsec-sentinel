@@ -20,8 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from flask import Flask, request, jsonify, send_file, abort, render_template
 from flask_cors import CORS
-import tempfile
-import shutil
+
 import logging
 
 # Add src directory to path so we can import existing modules
@@ -129,16 +128,10 @@ def scan_repository():
         except (ValueError, PermissionError) as e:
             return jsonify({'error': f'Invalid repository path: {str(e)}'}), 400
             
-        # Set environment variables for this scan
-        original_scan_level = os.environ.get('APPSEC_SCAN_LEVEL')
-        original_auto_fix = os.environ.get('APPSEC_AUTO_FIX')
-        original_code_quality = os.environ.get('APPSEC_CODE_QUALITY')
-
         logger.info(f"🔍 Web scan request - scan_level: {scan_level}, tools: {selected_tools}")
-        os.environ['APPSEC_SCAN_LEVEL'] = scan_level
-        os.environ['APPSEC_AUTO_FIX'] = str(auto_fix).lower()
-        os.environ['APPSEC_CODE_QUALITY'] = 'true' if run_code_quality else 'false'
-        logger.info(f"🔍 Web scan - configured APPSEC_SCAN_LEVEL={scan_level}, APPSEC_CODE_QUALITY={run_code_quality}")
+        # Note: We no longer modify os.environ here to ensure thread safety
+        # All configuration is passed directly to the scanner functions
+        logger.info(f"🔍 Web scan - configured scan_level={scan_level}, code_quality={run_code_quality}")
 
         try:
             # Track usage for IP monitoring
@@ -166,7 +159,8 @@ def scan_repository():
             print(f"🔧 Running scanners: {', '.join(scanners_to_run)}")
 
             # Use existing scanning function with selected scanners
-            all_findings = run_security_scans(str(validated_path), scanners_to_run, output_dir, scan_level)
+            # Pass configuration arguments explicitly for thread safety
+            all_findings = run_security_scans(str(validated_path), scanners_to_run, output_dir, scan_level, run_code_quality)
             
             # Add cross-file analysis enhancement like CLI mode does
             enhanced_findings = all_findings
@@ -269,11 +263,10 @@ def scan_repository():
                 auto_fix_mode = data.get('auto_fix_mode', '3')  # Default to both if not specified
                 
                 # Set environment variables for non-interactive mode
-                os.environ['APPSEC_WEB_MODE'] = 'true'
-                os.environ['APPSEC_AUTO_FIX_MODE'] = str(auto_fix_mode)
+                # Pass configuration arguments explicitly for thread safety
                 try:
                     print(f"🔧 Starting auto-remediation...")
-                    remediation_results = handle_auto_remediation(str(validated_path), all_findings)
+                    remediation_results = handle_auto_remediation(str(validated_path), all_findings, web_mode=True, auto_fix_enabled=True, auto_fix_mode_arg=str(auto_fix_mode))
                     if remediation_results.get("success"):
                         print("✅ Auto-remediation completed")
                     else:
@@ -312,21 +305,8 @@ def scan_repository():
             return jsonify(response)
             
         finally:
-            # Restore original environment variables
-            if original_scan_level:
-                os.environ['APPSEC_SCAN_LEVEL'] = original_scan_level
-            elif 'APPSEC_SCAN_LEVEL' in os.environ:
-                del os.environ['APPSEC_SCAN_LEVEL']
-
-            if original_auto_fix:
-                os.environ['APPSEC_AUTO_FIX'] = original_auto_fix
-            elif 'APPSEC_AUTO_FIX' in os.environ:
-                del os.environ['APPSEC_AUTO_FIX']
-
-            if original_code_quality:
-                os.environ['APPSEC_CODE_QUALITY'] = original_code_quality
-            elif 'APPSEC_CODE_QUALITY' in os.environ:
-                del os.environ['APPSEC_CODE_QUALITY']
+            # No cleanup needed as we didn't modify environment variables
+            pass
         
     except Exception as e:
         logger.error(f"Scan error: {e}")

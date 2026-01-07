@@ -20,7 +20,7 @@ from .validation import validate_binary_path, validate_repo_path
 
 logger = logging.getLogger(__name__)
 
-def run_trivy_scan(repo_path: str, output_dir: Path = None) -> List[Dict[str, Any]]:
+def run_trivy_scan(repo_path: str, output_dir: Path = None, scan_level: str = 'critical-high') -> List[Dict[str, Any]]:
     """
     Run Trivy SCA (Software Composition Analysis) scanner on the given repository.
     First checks for existing Trivy results from GitHub Actions, then runs locally if needed.
@@ -38,8 +38,8 @@ def run_trivy_scan(repo_path: str, output_dir: Path = None) -> List[Dict[str, An
         output_file = out_dir / "trivy-sca.json"
 
         # Run Trivy locally
-        logger.debug("Running Trivy scan locally")
-        if not _run_trivy_scan(repo_path, output_file):
+        logger.debug(f"Running Trivy scan locally (level: {scan_level})")
+        if not _run_trivy_scan(repo_path, output_file, scan_level):
             return []
 
         # Parse and return findings from the JSON output
@@ -49,7 +49,7 @@ def run_trivy_scan(repo_path: str, output_dir: Path = None) -> List[Dict[str, An
         logger.error(f"Error in SCA scan: {e}")
         return []
 
-def _run_trivy_scan(repo_path: str, output_file: Path) -> bool:
+def _run_trivy_scan(repo_path: str, output_file: Path, scan_level: str) -> bool:
     """Run Trivy scan locally and return True if successful."""
     try:
         # Validate and sanitize repo path
@@ -86,13 +86,17 @@ def _run_trivy_scan(repo_path: str, output_file: Path) -> bool:
             output_file.unlink()
             logger.debug(f"Deleted old trivy output file: {output_file}")
 
-        # Run Trivy filesystem scan for vulnerabilities (CRITICAL and HIGH only)
-        # Enable all scanners to detect Gradle/Maven dependencies
+        # Run Trivy filesystem scan for vulnerabilities
+        # Determine severity based on scan_level
+        severity_flags = "CRITICAL,HIGH"
+        if scan_level == 'all':
+            severity_flags = "CRITICAL,HIGH,MEDIUM,LOW"
+            
         cmd = [
             trivy_bin, "fs",
             "--format", "json",
             "--output", str(output_file),
-            "--severity", "CRITICAL,HIGH",
+            "--severity", severity_flags,
             "--scanners", "vuln",
             "--list-all-pkgs",  # List all packages even without lockfiles
             "--quiet",

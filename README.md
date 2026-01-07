@@ -17,12 +17,14 @@ All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, AI Code Fixes, C
 
 ## Quick Start
 
+For a super fast setup guide, see [QUICKSTART.md](QUICKSTART.md).
+
 ### What You Get Out-of-the-Box
 
-**Security scanning** - no extra installations needed:
-- Semgrep (SAST) - included
-- Gitleaks (secrets) - auto-detects
-- Trivy (dependencies) - bundled
+**Security scanning**:
+- Semgrep (SAST) - included via pip
+- Gitleaks (secrets) - requires installation (see QUICKSTART)
+- Trivy (dependencies) - requires installation (see QUICKSTART)
 
 **Code quality scanning is optional** - install what you need:
 - ESLint (JavaScript/TypeScript) - `npm install -g eslint`
@@ -34,15 +36,10 @@ All-In-One Appsec Tool: SAST, SCA, Secrets, SBOM, Code Quality, AI Code Fixes, C
 ### Prerequisites
 
 Configure LLM provider in `.env` (only needed for auto-remediation feature):
-```bash
-cp env.example .env
-# Edit .env and set:
-# AI_PROVIDER=openai
-# OPENAI_API_KEY=sk-...
-# AI_MODEL=gpt-4o-mini
-```
-
-> 💡 **Alternative providers**: Also supports `AI_PROVIDER=claude` or `AI_PROVIDER=aws_bedrock` (see env.example for all options)
+- **OpenAI**: `OPENAI_API_KEY`, `AI_PROVIDER=openai`, `AI_MODEL=gpt-4o-mini`
+- **Claude**: `CLAUDE_API_KEY`, `AI_PROVIDER=claude`, `AI_MODEL=claude-sonnet-4-20250514`
+- **Gemini**: `GEMINI_API_KEY`, `AI_PROVIDER=gemini`, `AI_MODEL=gemini-1.5-flash`
+- **AWS Bedrock**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `INFERENCE_PROFILE_ID`, `AI_PROVIDER=aws_bedrock` (see env.example for all options)
 
 ### Web Interface
 

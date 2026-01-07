@@ -50,7 +50,7 @@ def _categorize_finding(check_id: str) -> str:
     # Default to security (conservative - treat unknowns as security)
     return 'security'
 
-def run_semgrep(repo_path: str, output_dir: str = None, scan_level: str = None) -> list:
+def run_semgrep(repo_path: str, output_dir: str = None, scan_level: str = None, code_quality: bool = False) -> list:
     """
     Run Semgrep SAST scanner on the given repository path.
     Returns a list of findings in standardized format.
@@ -59,6 +59,7 @@ def run_semgrep(repo_path: str, output_dir: str = None, scan_level: str = None) 
         repo_path: Path to repository to scan
         output_dir: Directory for output files (defaults to ../outputs/raw)
         scan_level: Scan level ('critical-high' or 'all'), overrides APPSEC_SCAN_LEVEL env var
+        code_quality: Whether to enable code quality rules (True/False)
     """
     try:
         # Convert to Path objects for proper handling
@@ -107,8 +108,10 @@ def run_semgrep(repo_path: str, output_dir: str = None, scan_level: str = None) 
         # Add code quality rules if enabled
         # Note: p/code-smells and p/maintainability were deprecated by Semgrep
         # Code quality patterns are now part of the standard security rules via --config auto
-        from config import ENABLE_CODE_QUALITY
-        if ENABLE_CODE_QUALITY:
+        # We handle this logic by filtering or additional config if needed, 
+        # but here we rely on the passed argument to log status.
+        # Previously relied on config.ENABLE_CODE_QUALITY
+        if code_quality:
             logger.info("📊 Code quality scanning enabled (included in --config auto)")
             # The --config auto already includes best-practice and correctness rules
             # No need to add separate rulesets
