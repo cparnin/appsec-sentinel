@@ -988,27 +988,136 @@
                 document.getElementById('codeQualityContainer').style.display = 'block';
                 document.getElementById('additionalProgress').style.display = 'block';
 
-                // Show threat model progress if checkbox is checked
-                if (showThreatModel) {
-                <div class="summary-card critical">
-                    <h3>${summary.critical_findings}</h3>
-                    <p>Critical</p>
-                </div>
-                <div class="summary-card high">
-                    <h3>${summary.high_findings}</h3>
-                    <p>High</p>
-                </div>
-                <div class="summary-card">
-                    <h3>${summary.auto_fix_enabled ? 'Yes' : 'No'}</h3>
-                    <p>Auto-fix Applied</p>
-                </div>
-            `;
 
-            // Add threat model card if available
-                summaryCards += `
-                    <div class="summary-card" style="border-top-color: #9333ea;">
+            this.nextPhase();
+        },
+
+        nextPhase: function() {
+             if (this.currentPhase >= this.phases.length) {
+                return;
+            }
+            
+            const phase = this.phases[this.currentPhase];
+            const item = document.getElementById(phase.id + 'Progress');
+            const indicator = document.getElementById(phase.id + 'Indicator');
+            const status = document.getElementById(phase.id + 'Status');
+            
+            if (item) item.classList.add('running');
+            if (indicator) indicator.classList.remove('completed');
+            
+            let msgIdx = 0;
+            const interval = setInterval(() => {
+                if (status && msgIdx < phase.messages.length) {
+                    status.textContent = phase.messages[msgIdx++];
+                }
+            }, phase.duration / phase.messages.length);
+            
+            setTimeout(() => {
+                clearInterval(interval);
+                if (item) {
+                    item.classList.remove('running');
+                    item.classList.add('completed');
+                }
+                if (indicator) {
+                    indicator.textContent = '✅';
+                    indicator.classList.add('completed');
+                }
+                if (status) status.textContent = 'Completed';
+                
+                this.currentPhase++;
+                if (this.currentPhase < this.phases.length) {
+                    this.nextPhase();
+                }
+            }, phase.duration);
+        }
+    };
+
+    // Submit handler
+    document.getElementById('scanForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const scanButton = document.getElementById('scanButton');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+        
+        // Reset state
+        scanButton.disabled = true;
+        loading.style.display = 'block';
+        results.style.display = 'none';
+        error.style.display = 'none';
+        
+        // Start progress simulation
+        progressManager.currentPhase = 0;
+        progressManager.start();
+        
+        const formData = new FormData(this);
+        const data = {
+            repo_path: document.getElementById('repoPath').value,
+            scan_level: formData.get('scanLevel'),
+            auto_fix: formData.get('autoFix') !== 'false',
+            auto_fix_mode: formData.get('autoFix'),
+            selected_tools: []
+        };
+        
+        // Collect selected tools
+        if (formData.get('tool_semgrep')) data.selected_tools.push('semgrep');
+        if (formData.get('tool_trivy')) data.selected_tools.push('trivy');
+        if (formData.get('tool_gitleaks')) data.selected_tools.push('gitleaks');
+        if (formData.get('tool_code_quality')) data.selected_tools.push('code_quality');
+        if (formData.get('tool_sbom')) data.selected_tools.push('sbom');
+        
+        try {
+            const response = await fetch('/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Show results
+            loading.style.display = 'none';
+            results.style.display = 'block';
+            
+            const summary = document.getElementById('summary');
+            if (result.scan_summary) {
+                summary.innerHTML = `
+                    <div class="summary-card ${result.scan_summary.critical_findings > 0 ? 'critical' : ''}">
+                        <h3>${result.scan_summary.critical_findings}</h3>
+                        <p>Critical</p>
                     </div>
-                    <div class="summary-card" style="border-top-color: #9333ea;">
-                        <p>Risk Level</p>
+                    <div class="summary-card ${result.scan_summary.high_findings > 0 ? 'high' : ''}">
+                        <h3>${result.scan_summary.high_findings}</h3>
+                        <p>High</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>${result.scan_summary.total_findings}</h3>
+                        <p>Total Issues</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>${result.remediation_applied ? 'Yes' : 'No'}</h3>
+                        <p>Auto-fix Applied</p>
                     </div>
                 `;
+                document.getElementById('scanInfo').textContent = `Scanned ${result.scan_summary.repository_path} at ${result.scan_summary.scan_level} level`;
+            }
+            
+        } catch (err) {
+            loading.style.display = 'none';
+            error.textContent = `Scan failed: ${err.message}`;
+            error.style.display = 'block';
+        } finally {
+            scanButton.disabled = false;
+        }
+    });
+
+    // Initial load
+    setCurrentDirectory();
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# 🚀 AppSec-Sentinel Quickstart
+# AppSec-Sentinel Quickstart
 
 ## Installation
 
