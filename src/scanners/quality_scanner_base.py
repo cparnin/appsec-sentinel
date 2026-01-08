@@ -233,10 +233,37 @@ class QualityScannerBase(ABC):
 
             # Check for fatal errors (returncode 2 is common for config errors)
             if result.returncode >= 2:
-                self.logger.error(f"{self.display_name} failed with exit code {result.returncode}")
-                if result.stderr:
-                    self.logger.debug(f"Error output: {result.stderr[:500]}")
-                return []
+                # Retry logic for broken repo configs
+                # If we were using a repo-specific config, try falling back to the bundled one
+                if config_path and config_path != self.get_bundled_config_path(repo_path_obj):
+                    self.logger.warning(f"⚠️  {self.display_name} repository configuration failed (likely missing plugins or dependencies).")
+                    self.logger.info(f"🔄 Falling back to AppSec-Sentinel default configuration for {self.display_name}...")
+                    
+                    fallback_config = self.get_bundled_config_path(repo_path_obj)
+                    if fallback_config:
+                        # Rebuild command with fallback config
+                        retry_cmd = self.build_scan_command(repo_path_obj, output_file, fallback_config)
+                        self.logger.debug(f"Retry {self.display_name} command: {' '.join(retry_cmd)}")
+                        
+                        result = subprocess.run(
+                            retry_cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=300,
+                            shell=False,
+                            cwd=str(repo_path_obj)
+                        )
+                        
+                        # Check result again after retry
+                        if result.returncode < 2:
+                            self.logger.info(f"✅ {self.display_name} recovered successfully using default config.")
+
+                # If still failing after retry (or no retry possible)
+                if result.returncode >= 2:
+                    self.logger.error(f"{self.display_name} failed with exit code {result.returncode}")
+                    if result.stderr:
+                        self.logger.debug(f"Error output: {result.stderr[:500]}")
+                    return []
 
             # Parse results
             findings = self.parse_output(output_file, repo_path_obj)

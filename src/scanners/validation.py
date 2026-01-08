@@ -146,18 +146,16 @@ def validate_repo_path(repo_path: str, raise_on_error: bool = False) -> Path:
             raise ValidationError(error_msg, details={'path': repo_path, 'original_error': str(e)})
         return None
 
-def detect_languages(repo_path: Path) -> set:
+def detect_languages(repo_path: Path) -> dict:
     """
     Detect programming languages in a repository by scanning file extensions.
-
-    This mimics how Semgrep auto-detects languages - by file extension matching.
-    Used to determine which code quality linters should be run.
+    Returns a dictionary of language counts to help determine dominant languages.
 
     Args:
         repo_path: Path to repository to analyze
 
     Returns:
-        set: Set of language identifiers (e.g., {'javascript', 'python', 'java'})
+        dict: Dictionary mapping language names to file counts (e.g., {'javascript': 150, 'python': 3})
     """
     # Comprehensive language mapping based on file extensions
     language_map = {
@@ -215,9 +213,9 @@ def detect_languages(repo_path: Path) -> set:
         '.R': 'r',
     }
 
-    detected_languages = set()
+    language_counts = {}
     files_checked = 0
-    max_files_to_check = 10000  # Prevent runaway scanning on huge repos
+    max_files_to_check = 20000  # Increased limit for better accuracy
 
     try:
         # Scan repository for file extensions
@@ -227,7 +225,7 @@ def detect_languages(repo_path: Path) -> set:
                 logger.warning(f"Reached max file check limit ({max_files_to_check}), stopping language detection")
                 break
 
-            # Skip directories and common ignore patterns
+            # Skip directories
             if file_path.is_dir():
                 continue
 
@@ -247,20 +245,14 @@ def detect_languages(repo_path: Path) -> set:
             file_extension = file_path.suffix.lower()
             if file_extension in language_map:
                 language = language_map[file_extension]
-                detected_languages.add(language)
+                language_counts[language] = language_counts.get(language, 0) + 1
 
-                # Early exit optimization: if we found the most common languages, we can stop
-                # This speeds up detection on large repos
-                if len(detected_languages) >= 5 and files_checked > 1000:
-                    logger.debug(f"Found {len(detected_languages)} languages after checking {files_checked} files, stopping early")
-                    break
+        detected_list = sorted(language_counts.keys())
+        logger.info(f"🔍 Language detection: Found {len(detected_list)} languages in {files_checked} files")
+        logger.debug(f"Title breakdown: {language_counts}")
 
-        logger.info(f"🔍 Language detection: Found {len(detected_languages)} languages in {files_checked} files")
-        logger.debug(f"Detected languages: {', '.join(sorted(detected_languages))}")
-
-        return detected_languages
+        return language_counts
 
     except Exception as e:
         logger.warning(f"Language detection failed: {e}")
-        # Return empty set on failure - scanners will still run security scans
-        return set()
+        return {}

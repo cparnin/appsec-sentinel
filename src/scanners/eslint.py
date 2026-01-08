@@ -133,6 +133,23 @@ def run_eslint(repo_path: str, output_dir: str = None) -> list:
             logger.info("💡 Install ESLint: npm install -g eslint")
             return []
 
+        # Detect ESLint version early (needed for config logic)
+        major_version = 8  # Default conservative assumption
+        try:
+            version_result = subprocess.run(
+                ['eslint', '--version'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if version_result.returncode == 0:
+                version_str = version_result.stdout.strip()
+                # Extract major version (e.g., "v9.37.0" -> 9 or "9.37.0" -> 9)
+                major_version = int(version_str.split('.')[0].replace('v', ''))
+                logger.debug(f"Detected ESLint version: {version_str} (Major: {major_version})")
+        except Exception as e:
+            logger.warning(f"Failed to detect ESLint version, assuming v8 compatible: {e}")
+
         # Set up output directory (use absolute path since ESLint runs from repo_path)
         if output_dir is None:
             from config import BASE_OUTPUT_DIR
@@ -151,19 +168,9 @@ def run_eslint(repo_path: str, output_dir: str = None) -> list:
 
         logger.debug(f"Starting ESLint scan of {repo_path_obj}")
 
-        # Check if package.json exists (indicates Node.js project)
+        # Check for package.json (indicates Node.js project)
         package_json = repo_path_obj / "package.json"
         has_package_json = package_json.exists()
-
-        # Check for ESLint config (any format)
-        eslint_config = repo_path_obj / ".eslintrc.json"
-        eslintrc_js = repo_path_obj / ".eslintrc.js"
-        eslintrc_cjs = repo_path_obj / ".eslintrc.cjs"
-        eslintrc_yml = repo_path_obj / ".eslintrc.yml"
-        eslintrc_yaml = repo_path_obj / ".eslintrc.yaml"
-        eslint_config_flat = repo_path_obj / "eslint.config.js"  # v9+ flat config
-        eslint_config_mjs = repo_path_obj / "eslint.config.mjs"
-        eslint_config_cjs = repo_path_obj / "eslint.config.cjs"
         package_has_eslint = False
 
         if has_package_json:
@@ -174,57 +181,58 @@ def run_eslint(repo_path: str, output_dir: str = None) -> list:
             except Exception:
                 pass
 
-        has_config = (
-            eslint_config.exists() or
-            eslintrc_js.exists() or
-            eslintrc_cjs.exists() or
-            eslintrc_yml.exists() or
-            eslintrc_yaml.exists() or
-            eslint_config_flat.exists() or
-            eslint_config_mjs.exists() or
-            eslint_config_cjs.exists() or
-            package_has_eslint
-        )
+        # Check for legacy configs (.eslintrc.*)
+        legacy_configs = [
+            repo_path_obj / ".eslintrc.json",
+            repo_path_obj / ".eslintrc.js",
+            repo_path_obj / ".eslintrc.cjs",
+            repo_path_obj / ".eslintrc.yml",
+            repo_path_obj / ".eslintrc.yaml"
+        ]
+        has_legacy_file = any(c.exists() for c in legacy_configs)
+        
+        # Check for flat configs (eslint.config.*)
+        flat_configs = [
+            repo_path_obj / "eslint.config.js",
+            repo_path_obj / "eslint.config.mjs",
+            repo_path_obj / "eslint.config.cjs"
+        ]
+        has_flat_file = any(c.exists() for c in flat_configs)
+
+        has_legacy_config = has_legacy_file or package_has_eslint
+        has_flat_config = has_flat_file
+        has_config = has_legacy_config or has_flat_config
 
         # Use AppSec-Sentinel bundled config as fallback if repo has none
-        # This ensures ESLint works everywhere without modifying project repos
         bundled_config_path = None
         if not has_config:
             logger.info("📋 No ESLint config in repo - using AppSec-Sentinel default config for code quality scan")
+            
+            # Get path to AppSec-Sentinel configs directory
+            scanner_dir = Path(__file__).parent
+            appsec_root = scanner_dir.parent.parent  # src/scanners -> src -> root
+            configs_dir = appsec_root / "configs"
 
-            # Detect ESLint version to choose correct config format
-            try:
-                version_result = subprocess.run(
-                    ['eslint', '--version'],
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                version_str = version_result.stdout.strip()
-                # Extract major version (e.g., "v9.37.0" -> 9)
-                major_version = int(version_str.split('.')[0].replace('v', ''))
+            if major_version >= 9:
+                # ESLint v9+ uses flat config (eslint.config.js)
+                bundled_config_path = configs_dir / "eslint.config.js"
+                logger.debug(f"Using ESLint v{major_version} flat config: {bundled_config_path}")
+            else:
+                # ESLint v8 and below use legacy format (.eslintrc.json)
+                bundled_config_path = configs_dir / "eslintrc.v8.json"
+                logger.debug(f"Using ESLint v{major_version} legacy config: {bundled_config_path}")
 
-                # Get path to AppSec-Sentinel configs directory
-                scanner_dir = Path(__file__).parent
-                appsec_root = scanner_dir.parent.parent  # src/scanners -> src -> root
-                configs_dir = appsec_root / "configs"
-
-                if major_version >= 9:
-                    # ESLint v9+ uses flat config (eslint.config.js)
-                    bundled_config_path = configs_dir / "eslint.config.js"
-                    logger.debug(f"Using ESLint v{major_version} flat config: {bundled_config_path}")
-                else:
-                    # ESLint v8 and below use legacy format (.eslintrc.json)
-                    bundled_config_path = configs_dir / "eslintrc.v8.json"
-                    logger.debug(f"Using ESLint v{major_version} legacy config: {bundled_config_path}")
-
-                if not bundled_config_path.exists():
-                    logger.error(f"Bundled ESLint config not found: {bundled_config_path}")
-                    return []
-
-            except Exception as e:
-                logger.error(f"Failed to detect ESLint version: {e}")
+            if not bundled_config_path.exists():
+                logger.error(f"Bundled ESLint config not found: {bundled_config_path}")
                 return []
+
+        # Prepare environment variables
+        env = os.environ.copy()
+        
+        # KEY FIX: ESLint 9+ ignores legacy configs unless ESLINT_USE_FLAT_CONFIG=false
+        if major_version >= 9 and has_legacy_config and not has_flat_config:
+            logger.info("ℹ️  Detected legacy ESLint config with ESLint v9+. Enabling compatibility mode (ESLINT_USE_FLAT_CONFIG=false).")
+            env['ESLINT_USE_FLAT_CONFIG'] = 'false'
 
         # Build ESLint command
         cmd = ['eslint']
@@ -272,7 +280,8 @@ def run_eslint(repo_path: str, output_dir: str = None) -> list:
             text=True,
             timeout=300,
             shell=False,
-            cwd=str(repo_path_obj)
+            cwd=str(repo_path_obj),
+            env=env
         )
 
         logger.debug(f"ESLint completed with return code: {result.returncode}")
@@ -282,9 +291,66 @@ def run_eslint(repo_path: str, output_dir: str = None) -> list:
         # 1 = linting errors found (this is expected!)
         # 2 = fatal error
         if result.returncode == 2:
-            error_details = format_subprocess_error('eslint', result.returncode, result.stderr, result.stdout)
-            logger.error(error_details)
-            return []
+            # Check if we should retry with bundled config
+            # Only retry if we weren't already using the bundled config
+            if not bundled_config_path:
+                logger.warning("⚠️  Repository ESLint configuration failed (likely missing plugins or dependencies).")
+                logger.info("🔄 Falling back to AppSec-Sentinel default configuration...")
+                
+                # Determine correct bundled config based on version
+                scanner_dir = Path(__file__).parent
+                appsec_root = scanner_dir.parent.parent
+                configs_dir = appsec_root / "configs"
+                
+                if major_version >= 9:
+                    fallback_config = configs_dir / "eslint.config.js"
+                else:
+                    fallback_config = configs_dir / "eslintrc.v8.json"
+                
+                if fallback_config.exists():
+                    # Rebuild command with fallback config
+                    retry_cmd = ['eslint']
+                    retry_cmd.extend(['--config', str(fallback_config)])
+                    
+                    # Add rest of the arguments (skip index 1 if it was --config, but here we just rebuild)
+                    retry_cmd.extend([
+                        '.',
+                        '--format', 'json',
+                        '--output-file', str(output_file),
+                        '--no-error-on-unmatched-pattern',
+                        '--ext', '.js,.jsx,.ts,.tsx,.mjs,.cjs'
+                    ])
+                    
+                    for pattern in SCAN_EXCLUDE_PATTERNS:
+                        retry_cmd.extend(['--ignore-pattern', pattern])
+                        
+                    retry_cmd.extend([
+                        '--ignore-pattern', '*.min.js',
+                        '--ignore-pattern', '*.bundle.js', 
+                        '--ignore-pattern', 'webpack.config.js',
+                        '--ignore-pattern', 'jest.config.js'
+                    ])
+                    
+                    # Clean environment for retry (remove compatibility flag if switching to v9 flat config)
+                    retry_env = os.environ.copy()
+                    
+                    logger.debug(f"Retry ESLint command: {' '.join(retry_cmd)}")
+                    
+                    result = subprocess.run(
+                        retry_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                        shell=False,
+                        cwd=str(repo_path_obj),
+                        env=retry_env
+                    )
+            
+            # Check result again after retry (or if we didn't retry)
+            if result.returncode == 2:
+                error_details = format_subprocess_error('eslint', result.returncode, result.stderr, result.stdout)
+                logger.error(error_details)
+                return []
 
         # Check if output file was created
         if not output_file.exists():

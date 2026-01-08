@@ -479,7 +479,7 @@ Focus on business impact and urgency. Be direct and actionable. Don't use techni
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=300,
+                    max_completion_tokens=300,
                     temperature=0.0
                 )
                 return response.choices[0].message.content.strip()
@@ -651,7 +651,7 @@ Focus on business impact and urgency. Be direct and actionable. Don't use techni
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=200,
+                    max_completion_tokens=200,
                     temperature=AI_TEMPERATURE  # Configurable via APPSEC_AI_TEMPERATURE env var
                 )
                 fix = response.choices[0].message.content.strip()

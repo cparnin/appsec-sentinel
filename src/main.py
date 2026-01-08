@@ -462,12 +462,19 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
 
     # Detect languages for code quality scanning (runs in parallel with security scans)
     # Uses the passed argument instead of environment variable
-    detected_languages = set()
+    detected_languages = {}
+    detected_list = []
+    
     if enable_code_quality:
         try:
+            # Now returns a dict of counts: {'python': 5, 'javascript': 100}
             detected_languages = detect_languages(Path(repo_path))
+            detected_list = sorted(detected_languages.keys())
+            
             if detected_languages:
-                logger.info(f"📊 Detected languages: {', '.join(sorted(detected_languages))}")
+                # Format for display: python, javascript
+                display_langs = [f"{l}" for l in detected_list]
+                logger.info(f"📊 Detected languages: {', '.join(display_langs)}")
         except Exception as e:
             logger.warning(f"Language detection failed: {e}")
 
@@ -500,20 +507,46 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             'category': 'security'
         })
 
-    # Code quality linters (run based on detected languages)
+    # Code quality linters (run based on detected languages AND density)
     if enable_code_quality and detected_languages:
+        # Calculate total files to determine density
+        total_files = sum(detected_languages.values())
+        
+        def should_lint(lang):
+            """
+            Determine if a language is significant enough to lint.
+            Rule: > 3 files AND > 2% of detected codebase (reduces noise in large polyglot repos)
+            """
+            count = detected_languages.get(lang, 0)
+            if count == 0: return False
+            
+            percentage = (count / total_files) * 100
+            
+            # Debug decision
+            decision = (count > 3 and percentage > 2.0) or (count > 10)
+            if not decision and count > 0:
+                logger.debug(f"Skipping linter for {lang} (only {count} files / {percentage:.1f}%)")
+            return decision
+
         # JavaScript/TypeScript - ESLint
         if ('javascript' in detected_languages or 'typescript' in detected_languages) and ESLINT_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'eslint',
-                'display_name': 'ESLint (Code Quality)',
-                'func': lambda: run_eslint(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added ESLint to scan pipeline")
+            # Check combined JS/TS count
+            js_count = detected_languages.get('javascript', 0)
+            ts_count = detected_languages.get('typescript', 0)
+            combined_count = js_count + ts_count
+            combined_pct = (combined_count / total_files) * 100
+            
+            if (combined_count > 3 and combined_pct > 2.0) or (combined_count > 10):
+                scanner_tasks.append({
+                    'name': 'eslint',
+                    'display_name': 'ESLint (Code Quality)',
+                    'func': lambda: run_eslint(repo_path, str(output_dir / "raw")),
+                    'category': 'code_quality'
+                })
+                logger.debug("Added ESLint to scan pipeline")
 
         # Python - Pylint
-        if 'python' in detected_languages and PYLINT_AVAILABLE:
+        if should_lint('python') and PYLINT_AVAILABLE:
             scanner_tasks.append({
                 'name': 'pylint',
                 'display_name': 'Pylint (Code Quality)',
@@ -523,7 +556,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             logger.debug("Added Pylint to scan pipeline")
 
         # Java - Checkstyle
-        if 'java' in detected_languages and CHECKSTYLE_AVAILABLE:
+        if should_lint('java') and CHECKSTYLE_AVAILABLE:
             scanner_tasks.append({
                 'name': 'checkstyle',
                 'display_name': 'Checkstyle (Code Quality)',
@@ -533,7 +566,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             logger.debug("Added Checkstyle to scan pipeline")
 
         # Go - golangci-lint
-        if 'go' in detected_languages and GOLANGCI_AVAILABLE:
+        if should_lint('go') and GOLANGCI_AVAILABLE:
             scanner_tasks.append({
                 'name': 'golangci-lint',
                 'display_name': 'golangci-lint (Code Quality)',
@@ -543,7 +576,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             logger.debug("Added golangci-lint to scan pipeline")
 
         # Ruby - RuboCop
-        if 'ruby' in detected_languages and RUBOCOP_AVAILABLE:
+        if should_lint('ruby') and RUBOCOP_AVAILABLE:
             scanner_tasks.append({
                 'name': 'rubocop',
                 'display_name': 'RuboCop (Code Quality)',
@@ -553,7 +586,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             logger.debug("Added RuboCop to scan pipeline")
 
         # Rust - Clippy
-        if 'rust' in detected_languages and CLIPPY_AVAILABLE:
+        if should_lint('rust') and CLIPPY_AVAILABLE:
             scanner_tasks.append({
                 'name': 'clippy',
                 'display_name': 'Clippy (Code Quality)',
@@ -563,7 +596,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             logger.debug("Added Clippy to scan pipeline")
 
         # PHP - PHPStan
-        if 'php' in detected_languages and PHPSTAN_AVAILABLE:
+        if should_lint('php') and PHPSTAN_AVAILABLE:
             scanner_tasks.append({
                 'name': 'phpstan',
                 'display_name': 'PHPStan (Code Quality)',
