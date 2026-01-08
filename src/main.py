@@ -625,6 +625,7 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
     all_findings = []
     security_findings_count = 0
     code_quality_findings_count = 0
+    code_quality_filtered_count = 0  # Track how many code quality findings were filtered
 
     for i, result in enumerate(results):
         task = scanner_tasks[i]
@@ -632,6 +633,17 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
             print(f"❌ {task['display_name']} failed: {result}")
         else:
             findings = result if result else []
+            
+            # Apply severity filtering for code quality findings based on scan_level
+            if task.get('category') == 'code_quality' and scan_level == 'critical-high':
+                original_count = len(findings)
+                # Filter to only critical/high severity
+                findings = [f for f in findings if f.get('severity') in ['critical', 'high']]
+                filtered_out = original_count - len(findings)
+                if filtered_out > 0:
+                    code_quality_filtered_count += filtered_out
+                    logger.debug(f"🔍 Filtered out {filtered_out} low/medium code quality findings from {task['name']}")
+            
             # Add tool identifier to findings
             for finding in findings:
                 finding['tool'] = task['name']
@@ -652,6 +664,10 @@ async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], o
                     print(f"✅ {task['display_name']}: no issues")
 
     elapsed_time = time.time() - start_time
+
+    # Log filtering summary if applicable
+    if code_quality_filtered_count > 0:
+        logger.info(f"🔍 Filtered out {code_quality_filtered_count} low/medium code quality findings (scan_level={scan_level})")
 
     # Summary message
     if code_quality_findings_count > 0:

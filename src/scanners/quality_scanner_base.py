@@ -167,6 +167,13 @@ class QualityScannerBase(ABC):
         self.logger.debug(f"No config found for {self.display_name}, tool will use defaults")
         return None
 
+    def get_scan_env(self, config_path: Optional[Path]) -> Dict[str, str]:
+        """
+        Get environment variables for the scan.
+        Override this if tool needs specific env vars based on config.
+        """
+        return os.environ.copy()
+
     def run_scan(self, repo_path: str, output_dir: str = None) -> List[Dict]:
         """
         Main entry point - runs the quality scan.
@@ -182,6 +189,8 @@ class QualityScannerBase(ABC):
             List of normalized findings
         """
         try:
+            import os
+            
             # Check if tool is installed
             if not self.check_installed():
                 # Print to stdout so users see it (not just logs)
@@ -213,6 +222,8 @@ class QualityScannerBase(ABC):
 
             # Build and run command
             cmd = self.build_scan_command(repo_path_obj, output_file, config_path)
+            env = self.get_scan_env(config_path) # Get env specific to this config
+            
             self.logger.debug(f"{self.display_name} command: {' '.join(cmd)}")
 
             # Delete old output file
@@ -226,7 +237,8 @@ class QualityScannerBase(ABC):
                 text=True,
                 timeout=300,
                 shell=False,
-                cwd=str(repo_path_obj)
+                cwd=str(repo_path_obj),
+                env=env
             )
 
             self.logger.debug(f"{self.display_name} completed with return code: {result.returncode}")
@@ -243,6 +255,8 @@ class QualityScannerBase(ABC):
                     if fallback_config:
                         # Rebuild command with fallback config
                         retry_cmd = self.build_scan_command(repo_path_obj, output_file, fallback_config)
+                        retry_env = self.get_scan_env(fallback_config) # Get env specific to fallback config (CRITICAL FIX)
+                        
                         self.logger.debug(f"Retry {self.display_name} command: {' '.join(retry_cmd)}")
                         
                         result = subprocess.run(
@@ -251,7 +265,8 @@ class QualityScannerBase(ABC):
                             text=True,
                             timeout=300,
                             shell=False,
-                            cwd=str(repo_path_obj)
+                            cwd=str(repo_path_obj),
+                            env=retry_env
                         )
                         
                         # Check result again after retry
