@@ -16,7 +16,6 @@ import subprocess
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Tuple
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -52,18 +51,18 @@ class QualityScannerBase(ABC):
 
     @property
     @abstractmethod
-    def check_command(self) -> List[str]:
+    def check_command(self) -> list[str]:
         """Command to check if tool is installed (e.g., ['eslint', '--version'])"""
         pass
 
     @property
     @abstractmethod
-    def languages(self) -> List[str]:
+    def languages(self) -> list[str]:
         """Languages this scanner supports (e.g., ['javascript', 'typescript'])"""
         pass
 
     @abstractmethod
-    def get_repo_config_paths(self, repo_path: Path) -> List[Path]:
+    def get_repo_config_paths(self, repo_path: Path) -> list[Path]:
         """
         Return list of possible config file paths in repo.
 
@@ -77,7 +76,7 @@ class QualityScannerBase(ABC):
         pass
 
     @abstractmethod
-    def get_bundled_config_path(self, repo_path: Path) -> Optional[Path]:
+    def get_bundled_config_path(self, repo_path: Path) -> Path | None:
         """
         Return path to AppSec-Sentinel bundled config file.
 
@@ -87,7 +86,7 @@ class QualityScannerBase(ABC):
         pass
 
     @abstractmethod
-    def build_scan_command(self, repo_path: Path, output_file: Path, config_path: Optional[Path]) -> List[str]:
+    def build_scan_command(self, repo_path: Path, output_file: Path, config_path: Path | None) -> list[str]:
         """
         Build the command to run the scanner.
 
@@ -102,7 +101,7 @@ class QualityScannerBase(ABC):
         pass
 
     @abstractmethod
-    def normalize_finding(self, raw_finding: dict, repo_path: Path) -> Dict:
+    def normalize_finding(self, raw_finding: dict, repo_path: Path) -> dict:
         """
         Convert tool's output format to AppSec-Sentinel standard format.
 
@@ -144,7 +143,7 @@ class QualityScannerBase(ABC):
             self.logger.debug(f"Error checking {self.display_name} installation: {e}")
             return False
 
-    def find_config(self, repo_path: Path) -> Optional[Path]:
+    def find_config(self, repo_path: Path) -> Path | None:
         """
         Find config file: repo config > bundled config > None.
 
@@ -167,14 +166,7 @@ class QualityScannerBase(ABC):
         self.logger.debug(f"No config found for {self.display_name}, tool will use defaults")
         return None
 
-    def get_scan_env(self, config_path: Optional[Path]) -> Dict[str, str]:
-        """
-        Get environment variables for the scan.
-        Override this if tool needs specific env vars based on config.
-        """
-        return os.environ.copy()
-
-    def run_scan(self, repo_path: str, output_dir: str = None) -> List[Dict]:
+    def run_scan(self, repo_path: str, output_dir: str = None) -> list[dict]:
         """
         Main entry point - runs the quality scan.
 
@@ -189,8 +181,6 @@ class QualityScannerBase(ABC):
             List of normalized findings
         """
         try:
-            import os
-            
             # Check if tool is installed
             if not self.check_installed():
                 # Print to stdout so users see it (not just logs)
@@ -222,8 +212,6 @@ class QualityScannerBase(ABC):
 
             # Build and run command
             cmd = self.build_scan_command(repo_path_obj, output_file, config_path)
-            env = self.get_scan_env(config_path) # Get env specific to this config
-            
             self.logger.debug(f"{self.display_name} command: {' '.join(cmd)}")
 
             # Delete old output file
@@ -237,48 +225,17 @@ class QualityScannerBase(ABC):
                 text=True,
                 timeout=300,
                 shell=False,
-                cwd=str(repo_path_obj),
-                env=env
+                cwd=str(repo_path_obj)
             )
 
             self.logger.debug(f"{self.display_name} completed with return code: {result.returncode}")
 
             # Check for fatal errors (returncode 2 is common for config errors)
             if result.returncode >= 2:
-                # Retry logic for broken repo configs
-                # If we were using a repo-specific config, try falling back to the bundled one
-                if config_path and config_path != self.get_bundled_config_path(repo_path_obj):
-                    self.logger.warning(f"⚠️  {self.display_name} repository configuration failed (likely missing plugins or dependencies).")
-                    self.logger.info(f"🔄 Falling back to AppSec-Sentinel default configuration for {self.display_name}...")
-                    
-                    fallback_config = self.get_bundled_config_path(repo_path_obj)
-                    if fallback_config:
-                        # Rebuild command with fallback config
-                        retry_cmd = self.build_scan_command(repo_path_obj, output_file, fallback_config)
-                        retry_env = self.get_scan_env(fallback_config) # Get env specific to fallback config (CRITICAL FIX)
-                        
-                        self.logger.debug(f"Retry {self.display_name} command: {' '.join(retry_cmd)}")
-                        
-                        result = subprocess.run(
-                            retry_cmd,
-                            capture_output=True,
-                            text=True,
-                            timeout=300,
-                            shell=False,
-                            cwd=str(repo_path_obj),
-                            env=retry_env
-                        )
-                        
-                        # Check result again after retry
-                        if result.returncode < 2:
-                            self.logger.info(f"✅ {self.display_name} recovered successfully using default config.")
-
-                # If still failing after retry (or no retry possible)
-                if result.returncode >= 2:
-                    self.logger.error(f"{self.display_name} failed with exit code {result.returncode}")
-                    if result.stderr:
-                        self.logger.debug(f"Error output: {result.stderr[:500]}")
-                    return []
+                self.logger.error(f"{self.display_name} failed with exit code {result.returncode}")
+                if result.stderr:
+                    self.logger.debug(f"Error output: {result.stderr[:500]}")
+                return []
 
             # Parse results
             findings = self.parse_output(output_file, repo_path_obj)
@@ -296,7 +253,7 @@ class QualityScannerBase(ABC):
             self.logger.error(f"{self.display_name} scan failed: {e}")
             return []
 
-    def parse_output(self, output_file: Path, repo_path: Path) -> List[Dict]:
+    def parse_output(self, output_file: Path, repo_path: Path) -> list[dict]:
         """
         Parse scanner output file and normalize findings.
 
@@ -330,7 +287,7 @@ class QualityScannerBase(ABC):
             self.logger.error(f"Failed to parse {self.display_name} output: {e}")
             return []
 
-    def extract_findings_from_output(self, raw_results: any) -> List[Dict]:
+    def extract_findings_from_output(self, raw_results: any) -> list[dict]:
         """
         Extract list of findings from raw JSON output.
 

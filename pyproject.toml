@@ -1,0 +1,60 @@
+[project]
+name = "appsec-sentinel"
+version = "1.0.0"
+description = "All-in-one application security scanner with SAST, SCA, secrets detection, and SBOM generation"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = [
+    "semgrep>=1.127.0,<2.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "requests>=2.32.0,<3.0.0",
+    "gitpython>=3.1.40,<4.0.0",
+    "rich>=13.0.0,<14.0.0",
+    "jinja2>=3.1.0,<4.0.0",
+    "typing-extensions>=4.10.0",
+]
+
+[project.optional-dependencies]
+ai = [
+    "boto3>=1.35.0,<2.0.0",
+    "openai>=1.0.0,<2.0.0",
+    "anthropic>=0.40.0,<2.0.0",
+]
+web = [
+    "flask>=3.0.0,<4.0.0",
+    "flask-cors>=4.0.0,<6.0.0",
+    "gunicorn>=23.0.0,<24.0.0",
+]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.23.0,<1.0.0",
+]
+
+[project.scripts]
+appsec-sentinel = "src.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "security: marks tests that verify security controls",
+]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E402",  # module-import-not-at-top (load_dotenv() must run first)
+    "E501",  # line too long (handled by formatter)
+    "W291",  # trailing whitespace (fix incrementally)
+    "W292",  # no newline at end of file
+    "W293",  # blank line with whitespace
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"

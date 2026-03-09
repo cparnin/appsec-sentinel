@@ -1,245 +1,80 @@
 #!/usr/bin/env python3
 """
-AppSec-Sentinel - Interactive CLI
+AppSec-Sentinel - Entry Point
 
-🔒 Comprehensive security scanner with optional LLM-powered auto-remediation
-
-This is the main entry point for AppSec-Sentinel, providing:
-- Interactive repository selection with smart discovery
-- Parallel scanning (Semgrep, Gitleaks, Trivy)
-- Git-aware scanning (only changed files for performance)
-- Comprehensive reporting with business context
-- Cross-file vulnerability analysis with deep codebase understanding
-- Optional LLM-powered auto-remediation creating separate PRs
-- Rich progress bars and comprehensive reporting
-
-Architecture:
-- Async/await for concurrent scanning (60-70% faster)
-- Cross-file analysis for context-aware vulnerability detection
-- Cross-file analysis provides context-aware vulnerability correlation
-- Separate PR creation for SAST fixes and dependency updates
-- Pipeline safety - never modifies workflow files
+Thin entry point that delegates to:
+- cli.py: Interactive prompts and menus
+- orchestrator.py: Scan execution, reporting, and SBOM generation
+- scanners/validation.py: Input validation (single source of truth)
 
 Usage:
-    python main.py              # Interactive mode for security consultants
+    python main.py              # Interactive mode
+    GITHUB_ACTIONS=true python main.py  # CI/CD auto mode
 """
 
-# Load environment variables from .env file (contains OpenAI API key)
+# Load environment variables early
 from dotenv import load_dotenv
 load_dotenv()
 
 from pathlib import Path
 import logging
 import os
+import asyncio
+import json
+from typing import Any
 
 # Setup logging early
 from logging_config import setup_logging, get_logger, set_debug_mode
 setup_logging(level=os.getenv('APPSEC_LOG_LEVEL', 'INFO'))
-import requests
-from typing import Optional, List, Dict, Any, Tuple
-import asyncio
-import time
-import subprocess
-import json
-from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
-from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
-from rich.console import Console
-from rich.prompt import Prompt, Confirm
 
-# Import configuration constants
-from config import (
-    TOOL_INSTALL_URLS, MAX_REPO_SEARCH_DEPTH, DEFAULT_TOOL_CHECK_TIMEOUT,
-    DEFAULT_MANUAL_REVIEW_TIME, format_subprocess_error, ENABLE_GIT_AWARE_SCANNING,
-    MAX_CHANGED_FILES_FOR_FULL_SCAN, GIT_DIFF_CONTEXT_LINES, BASE_OUTPUT_DIR
-)
-
-# Import path utilities for multi-repo/branch output structure
-from path_utils import (
-    get_output_path, cleanup_old_scans, setup_output_directories,
-    get_report_path, get_pr_findings_path
-)
-
-# Import our scanner modules
-from scanners.semgrep import run_semgrep      # Static Application Security Testing (SAST)
-from scanners.gitleaks import run_gitleaks    # Secrets detection in git history
-from scanners.trivy import run_trivy_scan         # Software Composition Analysis (dependency vulnerabilities)
-from scanners.validation import detect_languages  # Language detection for code quality linters
-from reporting.html import generate_html_report  # Pretty HTML reports for detailed review
-
-# Import code quality linters (graceful fallback if not installed)
-try:
-    from scanners.eslint import run_eslint
-    ESLINT_AVAILABLE = True
-except ImportError:
-    ESLINT_AVAILABLE = False
-
-try:
-    from scanners.pylint import run_pylint
-    PYLINT_AVAILABLE = True
-except ImportError:
-    PYLINT_AVAILABLE = False
-
-try:
-    from scanners.checkstyle import run_checkstyle
-    CHECKSTYLE_AVAILABLE = True
-except ImportError:
-    CHECKSTYLE_AVAILABLE = False
-
-try:
-    from scanners.golangci_lint import run_golangci_lint
-    GOLANGCI_AVAILABLE = True
-except ImportError:
-    GOLANGCI_AVAILABLE = False
-
-try:
-    from scanners.rubocop import run_rubocop
-    RUBOCOP_AVAILABLE = True
-except ImportError:
-    RUBOCOP_AVAILABLE = False
-
-try:
-    from scanners.clippy import run_clippy
-    CLIPPY_AVAILABLE = True
-except ImportError:
-    CLIPPY_AVAILABLE = False
-
-try:
-    from scanners.phpstan import run_phpstan
-    PHPSTAN_AVAILABLE = True
-except ImportError:
-    PHPSTAN_AVAILABLE = False
-
-# Reduce noise from all libraries and scanners (setup_logging already called at line 35)
+# Reduce noise from third-party libraries
 logging.getLogger("httpx").setLevel(logging.ERROR)
 logging.getLogger("openai").setLevel(logging.ERROR)
 logging.getLogger("anthropic").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
-logging.getLogger("auto_remediation").setLevel(logging.ERROR)
-logging.getLogger("sbom_generator").setLevel(logging.ERROR)
-logging.getLogger("enhanced_analyzer").setLevel(logging.ERROR)
-logging.getLogger("scanners.trivy").setLevel(logging.ERROR)
-logging.getLogger("scanners.semgrep").setLevel(logging.ERROR)
-logging.getLogger("scanners.gitleaks").setLevel(logging.ERROR)
-logging.getLogger("reporting.html").setLevel(logging.ERROR)
 
 logger = get_logger(__name__)
 
-def validate_repo_path(repo_path: str) -> Path:
-    """
-    Safely validate that the repository path exists and is accessible with enhanced security.
-    
-    This prevents directory traversal attacks, validates permissions, and ensures we're
-    scanning a valid repository before spending time on security analysis.
-    
-    Args:
-        repo_path: User-provided path to repository to scan
-        
-    Returns:
-        Path: Resolved absolute path to repository
-        
-    Raises:
-        ValueError: If path doesn't exist, isn't a directory, or fails security checks
-        PermissionError: If path is not readable
-    """
-    # Input sanitization
-    if not repo_path or not isinstance(repo_path, str):
-        raise ValueError("Repository path must be a non-empty string")
-    
-    # Remove any null bytes (security)
-    clean_path = repo_path.replace('\x00', '')
-    if clean_path != repo_path:
-        raise ValueError("Invalid characters in repository path")
-    
-    # Check for suspicious patterns that could indicate command injection
-    dangerous_patterns = [';', '|', '&', '$', '`', '$(', '${']
-    if any(pattern in clean_path for pattern in dangerous_patterns):
-        raise ValueError("Potentially dangerous characters in repository path")
-    
-    # Check path length to prevent resource exhaustion  
-    if len(clean_path) > 4096:  # Common filesystem limit
-        raise ValueError("Repository path too long (max 4096 characters)")
-    
-    try:
-        path = Path(clean_path).resolve()
-        
-        # Additional path traversal protection
-        # Ensure resolved path doesn't escape expected boundaries
-        if '..' in clean_path:
-            # Check if the resolved path significantly differs from input (potential traversal)
-            original_parts = Path(clean_path).parts
-            resolved_parts = path.parts
-            if len(resolved_parts) < len(original_parts) - clean_path.count('..'):
-                raise ValueError("Path traversal attempt detected")
-                
-    except (OSError, ValueError) as e:
-        raise ValueError(f"Invalid repository path format: {e}")
-    
-    # Basic existence and type checks
-    if not path.exists():
-        raise ValueError(f"Repository path does not exist: {repo_path}")
-    if not path.is_dir():
-        raise ValueError(f"Repository path is not a directory: {repo_path}")
-    
-    # Permission checks
-    if not os.access(path, os.R_OK):
-        raise PermissionError(f"Repository path is not readable: {path}")
-    
-    # Security: Prevent scanning system directories
-    system_dirs = {
-        Path('/etc'), Path('/sys'), Path('/proc'), Path('/dev'),
-        Path('/boot'), Path('/root'), Path('/var/log'),
-        Path('C:/Windows'), Path('C:/System32'), Path('C:/Program Files')
-    }
-    
-    # Check if path is or contains system directories
-    for sys_dir in system_dirs:
-        try:
-            if sys_dir.exists() and (path == sys_dir or sys_dir in path.parents or path in sys_dir.parents):
-                raise ValueError(f"Cannot scan system directory: {path}")
-        except (OSError, ValueError):
-            # Skip if system directory doesn't exist or can't be compared
-            continue
-    
-    # Warn about very large directories
-    try:
-        # Quick size check - count items in root directory
-        item_count = sum(1 for _ in path.iterdir() if _.is_file() or _.is_dir())
-        if item_count > 10000:
-            logger.warning(f"Large directory detected ({item_count} items). Scan may take a long time.")
-    except (OSError, PermissionError):
-        # Can't count items, that's ok
-        pass
-    
-    # Verify it's actually a git repository (optional but helpful)
-    git_dir = path / '.git'
-    if not git_dir.exists():
-        logger.warning(f"Directory is not a git repository: {path}")
-        logger.warning("Some scanners (like gitleaks) require git history to function properly")
-    
-    return path
+# Import configuration
+from config import BASE_OUTPUT_DIR
+from path_utils import get_output_path, cleanup_old_scans, setup_output_directories
+from scanners.validation import validate_repo_path as _validate_repo_path
 
-def validate_environment_config() -> Dict[str, Any]:
+# Import orchestrator (scan pipeline, reporting)
+from orchestrator import run_full_scan_pipeline
+
+# Import CLI interaction
+from cli import (
+    show_interactive_menu,
+    select_scan_level,
+    select_tools,
+    select_repository,
+)
+
+
+def validate_repo_path(repo_path: str) -> Path:
+    """Validate repository path, raising on failure."""
+    result = _validate_repo_path(repo_path, raise_on_error=True)
+    if result is None:
+        raise ValueError(f"Repository path validation failed: {repo_path}")
+    return result
+
+
+def validate_environment_config() -> dict[str, Any]:
     """
     Validate environment configuration and return sanitized values.
-    
-    This ensures that environment variables are properly formatted and within
+
+    Ensures environment variables are properly formatted and within
     acceptable ranges to prevent configuration-related issues.
-    
-    Returns:
-        dict: Validated configuration values with defaults applied
-        
-    Raises:
-        ValueError: If critical configuration is invalid
     """
-    config = {}
-    
+    config: dict[str, Any] = {}
+
     # Validate timeouts (must be positive integers)
     timeout_vars = {
-        'SEMGREP_TIMEOUT': (300, 60, 1800),  # (default, min, max)
+        'SEMGREP_TIMEOUT': (300, 60, 1800),
         'GITLEAKS_TIMEOUT': (120, 30, 600),
-        'TRIVY_TIMEOUT': (300, 60, 1800)
+        'TRIVY_TIMEOUT': (300, 60, 1800),
     }
-    
     for var, (default, min_val, max_val) in timeout_vars.items():
         try:
             value = int(os.getenv(var, default))
@@ -250,878 +85,274 @@ def validate_environment_config() -> Dict[str, Any]:
         except ValueError:
             logger.warning(f"Invalid {var} value, using default {default}")
             config[var.lower()] = default
-    
+
     # Validate AI provider
     ai_provider = os.getenv('AI_PROVIDER', 'openai').strip().lower()
     if ai_provider not in ['openai', 'claude', 'aws_bedrock']:
         logger.warning(f"Unsupported AI provider '{ai_provider}', defaulting to 'openai'")
         ai_provider = 'openai'
     config['ai_provider'] = ai_provider
-    
-    # Debug AWS configuration if using Bedrock
+
     if ai_provider == 'aws_bedrock':
         aws_region = os.getenv('AWS_REGION', '').strip()
         aws_access_key = os.getenv('AWS_ACCESS_KEY_ID', '').strip()
         aws_secret_key = os.getenv('AWS_SECRET_ACCESS_KEY', '').strip()
-        
-        logger.info(f"AWS Bedrock configuration check:")
-        logger.info(f"  - AWS_REGION: {'✓ Set' if aws_region else '✗ Not set (will default to us-east-1)'}")
-        logger.info(f"  - AWS_ACCESS_KEY_ID: {'✓ Set' if aws_access_key else '✗ Not set'}")
-        logger.info(f"  - AWS_SECRET_ACCESS_KEY: {'✓ Set' if aws_secret_key else '✗ Not set'}")
-        
+        logger.info("AWS Bedrock configuration check:")
+        logger.info(f"  - AWS_REGION: {'set' if aws_region else 'not set (will default to us-east-1)'}")
+        logger.info(f"  - AWS_ACCESS_KEY_ID: {'set' if aws_access_key else 'not set'}")
+        logger.info(f"  - AWS_SECRET_ACCESS_KEY: {'set' if aws_secret_key else 'not set'}")
         if not aws_access_key or not aws_secret_key:
             logger.error("AWS credentials are required for Bedrock but not found in environment")
-            logger.error("Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets in GitHub Actions")
-    
+
     # Validate scan level
     scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high').strip().lower()
     if scan_level not in ['critical-high', 'all']:
         logger.warning(f"Invalid scan level '{scan_level}', defaulting to 'critical-high'")
         scan_level = 'critical-high'
     config['scan_level'] = scan_level
-    
-    # Validate hourly rate (must be positive number)
+
+    # Validate hourly rate
     try:
         hourly_rate = float(os.getenv('SECURITY_ENGINEER_HOURLY_RATE', '150'))
-        if hourly_rate <= 0 or hourly_rate > 1000:  # Reasonable range
-            logger.warning(f"Hourly rate {hourly_rate} seems unrealistic, using default $150")
+        if hourly_rate <= 0 or hourly_rate > 1000:
             hourly_rate = 150.0
         config['hourly_rate'] = hourly_rate
     except ValueError:
-        logger.warning("Invalid hourly rate format, using default $150")
         config['hourly_rate'] = 150.0
-    
-    # Validate API keys (check format but don't log values)
-    api_keys = ['OPENAI_API_KEY', 'CLAUDE_API_KEY']
-    for key_var in api_keys:
+
+    # Validate API keys (presence only, never log values)
+    for key_var in ['OPENAI_API_KEY', 'CLAUDE_API_KEY']:
         key_value = os.getenv(key_var, '').strip()
         if key_value:
-            # Basic format validation without exposing the key
             if len(key_value) < 10:
                 logger.warning(f"{key_var} appears too short to be valid")
             elif '\n' in key_value or '\r' in key_value:
                 logger.warning(f"{key_var} contains invalid characters")
             else:
-                config[key_var.lower()] = True  # Mark as present
+                config[key_var.lower()] = True
         else:
             config[key_var.lower()] = False
-    
-    # Skip verbose configuration logging for cleaner output
-    
+
     return config
+
 
 def is_github_actions() -> bool:
     """Check if running in GitHub Actions environment."""
     return os.getenv('GITHUB_ACTIONS') == 'true'
 
-def select_repository() -> str:
-    """
-    Interactive repository selection for security analysis.
-    """
-    print("\n📁 Repository Selection:")
-    print("   [1] Current directory")
-    print("   [2] Browse for directory")
-    print("   [3] Enter path manually")
 
-    while True:
-        choice = Prompt.ask("\nChoose repository option", choices=["1", "2", "3"])
-
-        if choice == '1':
-            repo_path = os.getcwd()
-            print(f"Selected: {repo_path}")
-            return repo_path
-
-        elif choice == '2':
-            print("\nScanning for repositories...")
-            repos = []
-            seen = set()
-
-            # Get search paths
-            user_home = os.path.expanduser("~")
-            search_paths = [
-                os.getcwd(),  # Current directory
-                os.path.join(user_home, "repos"),
-                os.path.join(user_home, "projects"),
-                os.path.join(user_home, "code"),
-                os.path.join(user_home, "workspace"),
-                user_home,
-            ]
-
-            # Add from environment variable if set
-            if os.getenv('REPO_SEARCH_PATHS'):
-                search_paths.extend(os.getenv('REPO_SEARCH_PATHS').split(':'))
-
-            # Search for git repos in all paths
-            for search_path in search_paths:
-                if not os.path.exists(search_path):
-                    continue
-
-                try:
-                    # Check if the search path itself is a git repo
-                    if os.path.exists(os.path.join(search_path, '.git')):
-                        real_path = os.path.realpath(search_path)
-                        if real_path not in seen:
-                            seen.add(real_path)
-                            repos.append((Path(search_path).name, search_path))
-
-                    # Look for git repos one level deep
-                    for item in os.listdir(search_path):
-                        item_path = os.path.join(search_path, item)
-                        if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, '.git')):
-                            real_path = os.path.realpath(item_path)
-                            if real_path not in seen:
-                                seen.add(real_path)
-                                repos.append((item, item_path))
-                except (PermissionError, OSError):
-                    continue
-
-            # Sort alphabetically and display
-            repos.sort(key=lambda x: x[0].lower())
-
-            if repos:
-                for idx, (name, path) in enumerate(repos, 1):
-                    # Show relative path if it's shorter
-                    try:
-                        rel_path = os.path.relpath(path)
-                        display_path = rel_path if len(rel_path) < len(path) else path
-                    except ValueError:
-                        display_path = path
-                    print(f"   [{idx}] {name} ({display_path})")
-
-                while True:
-                    repo_choice = Prompt.ask(f"\nChoose repository [1-{len(repos)}] or 'q' to go back")
-                    if repo_choice.lower() == 'q':
-                        break
-                    try:
-                        idx = int(repo_choice) - 1
-                        if 0 <= idx < len(repos):
-                            repo_path = repos[idx][1]
-                            print(f"Selected: {repo_path}")
-                            return repo_path
-                        else:
-                            print(f"Invalid choice. Please enter 1-{len(repos)}")
-                    except ValueError:
-                        print("Invalid input. Please enter a number.")
-            else:
-                print("No git repositories found in common locations")
-                print(f"Searched: {', '.join([p for p in search_paths if os.path.exists(p)])}")
-                
-        elif choice == '3':
-            repo_path = Prompt.ask("\nEnter repository path").strip()
-            if repo_path and Path(repo_path).exists():
-                if Path(repo_path).is_dir():
-                    print(f"Selected: {repo_path}")
-                    return repo_path
-                else:
-                    print("❌ Path is not a directory")
-            else:
-                print("❌ Path does not exist")
-        else:
-            print("Invalid choice. Please enter 1, 2, or 3")
-
-def run_security_scans(repo_path: str, scanners_to_run: List[str], output_dir: Path, scan_level: str = None, enable_code_quality: bool = None) -> List[Dict[str, Any]]:
-    """
-    Synchronous wrapper for async scanner execution.
-
-    This maintains backward compatibility while using the new async architecture.
-
-    Args:
-        repo_path: Path to repository to scan
-        scanners_to_run: List of scanners to run
-        output_dir: Output directory for results
-        scan_level: Scan level ('critical-high' or 'all'), defaults to env var or 'critical-high'
-        enable_code_quality: Whether to run code quality linters (defaults to env var APPSEC_CODE_QUALITY or True)
-    """
-    if scan_level is None:
-        scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high')
-    
-    if enable_code_quality is None:
-        enable_code_quality = os.getenv('APPSEC_CODE_QUALITY', 'true').lower() == 'true'
-
-    return asyncio.run(run_security_scans_async(repo_path, scanners_to_run, output_dir, scan_level, enable_code_quality))
-
-async def run_security_scans_async(repo_path: str, scanners_to_run: List[str], output_dir: Path, scan_level: str = 'critical-high', enable_code_quality: bool = True) -> List[Dict[str, Any]]:
-    """
-    Run the selected security scanners AND code quality linters in parallel.
-
-    This function runs multiple scanners concurrently using asyncio for better
-    resource management and scalability.
-
-    Args:
-        repo_path: Path to repository to scan
-        scanners_to_run: List of scanners to run
-        output_dir: Output directory for scan results
-        scan_level: Scan level ('critical-high' or 'all') - ONLY affects security findings
-        enable_code_quality: Whether to run code quality linters
-    """
-    # Ensure output directories exist
-    output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "raw").mkdir(parents=True, exist_ok=True)
-
-    logger.info(f"🔍 run_security_scans_async - Using scan_level: {scan_level}, code_quality: {enable_code_quality}")
-
-    # Detect languages for code quality scanning (runs in parallel with security scans)
-    # Uses the passed argument instead of environment variable
-    detected_languages = {}
-    detected_list = []
-    
-    if enable_code_quality:
-        try:
-            # Now returns a dict of counts: {'python': 5, 'javascript': 100}
-            detected_languages = detect_languages(Path(repo_path))
-            detected_list = sorted(detected_languages.keys())
-            
-            if detected_languages:
-                # Format for display: python, javascript
-                display_langs = [f"{l}" for l in detected_list]
-                logger.info(f"📊 Detected languages: {', '.join(display_langs)}")
-        except Exception as e:
-            logger.warning(f"Language detection failed: {e}")
-
-    # Define scanner coroutines with their display names
-    scanner_tasks = []
-
-    # Security scanners (always run)
-    if "semgrep" in scanners_to_run or "all" in scanners_to_run:
-        # Capture scan_level explicitly in lambda to avoid late binding issues
-        scanner_tasks.append({
-            'name': 'semgrep',
-            'display_name': 'Semgrep (SAST)',
-            'func': lambda sl=scan_level, cq=enable_code_quality: run_semgrep(repo_path, str(output_dir / "raw"), sl, code_quality=cq),
-            'category': 'security'
-        })
-
-    if "gitleaks" in scanners_to_run or "all" in scanners_to_run:
-        scanner_tasks.append({
-            'name': 'gitleaks',
-            'display_name': 'Gitleaks (Secrets)',
-            'func': lambda: run_gitleaks(repo_path, str(output_dir / "raw")),
-            'category': 'security'
-        })
-
-    if "trivy" in scanners_to_run or "all" in scanners_to_run:
-        scanner_tasks.append({
-            'name': 'trivy',
-            'display_name': 'Trivy (Dependencies)',
-            'func': lambda sl=scan_level: run_trivy_scan(repo_path, str(output_dir / "raw"), scan_level=sl),
-            'category': 'security'
-        })
-
-    # Code quality linters (run based on detected languages AND density)
-    if enable_code_quality and detected_languages:
-        # Calculate total files to determine density
-        total_files = sum(detected_languages.values())
-        
-        def should_lint(lang):
-            """
-            Determine if a language is significant enough to lint.
-            Rule: > 3 files AND > 2% of detected codebase (reduces noise in large polyglot repos)
-            """
-            count = detected_languages.get(lang, 0)
-            if count == 0: return False
-            
-            percentage = (count / total_files) * 100
-            
-            # Debug decision
-            decision = (count > 3 and percentage > 2.0) or (count > 10)
-            if not decision and count > 0:
-                logger.debug(f"Skipping linter for {lang} (only {count} files / {percentage:.1f}%)")
-            return decision
-
-        # JavaScript/TypeScript - ESLint
-        if ('javascript' in detected_languages or 'typescript' in detected_languages) and ESLINT_AVAILABLE:
-            # Check combined JS/TS count
-            js_count = detected_languages.get('javascript', 0)
-            ts_count = detected_languages.get('typescript', 0)
-            combined_count = js_count + ts_count
-            combined_pct = (combined_count / total_files) * 100
-            
-            if (combined_count > 3 and combined_pct > 2.0) or (combined_count > 10):
-                scanner_tasks.append({
-                    'name': 'eslint',
-                    'display_name': 'ESLint (Code Quality)',
-                    'func': lambda: run_eslint(repo_path, str(output_dir / "raw")),
-                    'category': 'code_quality'
-                })
-                logger.debug("Added ESLint to scan pipeline")
-
-        # Python - Pylint
-        if should_lint('python') and PYLINT_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'pylint',
-                'display_name': 'Pylint (Code Quality)',
-                'func': lambda: run_pylint(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added Pylint to scan pipeline")
-
-        # Java - Checkstyle
-        if should_lint('java') and CHECKSTYLE_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'checkstyle',
-                'display_name': 'Checkstyle (Code Quality)',
-                'func': lambda: run_checkstyle(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added Checkstyle to scan pipeline")
-
-        # Go - golangci-lint
-        if should_lint('go') and GOLANGCI_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'golangci-lint',
-                'display_name': 'golangci-lint (Code Quality)',
-                'func': lambda: run_golangci_lint(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added golangci-lint to scan pipeline")
-
-        # Ruby - RuboCop
-        if should_lint('ruby') and RUBOCOP_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'rubocop',
-                'display_name': 'RuboCop (Code Quality)',
-                'func': lambda: run_rubocop(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added RuboCop to scan pipeline")
-
-        # Rust - Clippy
-        if should_lint('rust') and CLIPPY_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'clippy',
-                'display_name': 'Clippy (Code Quality)',
-                'func': lambda: run_clippy(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added Clippy to scan pipeline")
-
-        # PHP - PHPStan
-        if should_lint('php') and PHPSTAN_AVAILABLE:
-            scanner_tasks.append({
-                'name': 'phpstan',
-                'display_name': 'PHPStan (Code Quality)',
-                'func': lambda: run_phpstan(repo_path, str(output_dir / "raw")),
-                'category': 'code_quality'
-            })
-            logger.debug("Added PHPStan to scan pipeline")
-
-    if not scanner_tasks:
-        print("No scanners selected")
-        return []
-
-    # Count security vs code quality scanners
-    security_count = sum(1 for t in scanner_tasks if t.get('category') == 'security')
-    quality_count = sum(1 for t in scanner_tasks if t.get('category') == 'code_quality')
-
-    print(f"🔍 Starting scan ({security_count} security + {quality_count} code quality scanners)...")
-    start_time = time.time()
-
-    # Run all scanner functions concurrently
-    results = await asyncio.gather(*[
-        asyncio.to_thread(task['func']) for task in scanner_tasks
-    ], return_exceptions=True)
-
-    # Process results
-    all_findings = []
-    security_findings_count = 0
-    code_quality_findings_count = 0
-    code_quality_filtered_count = 0  # Track how many code quality findings were filtered
-
-    for i, result in enumerate(results):
-        task = scanner_tasks[i]
-        if isinstance(result, Exception):
-            print(f"❌ {task['display_name']} failed: {result}")
-        else:
-            findings = result if result else []
-            
-            # Apply severity filtering for code quality findings based on scan_level
-            if task.get('category') == 'code_quality' and scan_level == 'critical-high':
-                original_count = len(findings)
-                # Filter to only critical/high severity
-                findings = [f for f in findings if f.get('severity') in ['critical', 'high']]
-                filtered_out = original_count - len(findings)
-                if filtered_out > 0:
-                    code_quality_filtered_count += filtered_out
-                    logger.debug(f"🔍 Filtered out {filtered_out} low/medium code quality findings from {task['name']}")
-            
-            # Add tool identifier to findings
-            for finding in findings:
-                finding['tool'] = task['name']
-            all_findings.extend(findings)
-
-            # Track separately for reporting
-            if task.get('category') == 'code_quality':
-                code_quality_findings_count += len(findings)
-                if len(findings) > 0:
-                    print(f"✅ {task['display_name']}: {len(findings)} code quality issues")
-                elif len(findings) == 0 and not isinstance(result, Exception):
-                    print(f"✅ {task['display_name']}: clean (no issues found)")
-            else:
-                security_findings_count += len(findings)
-                if len(findings) > 0:
-                    print(f"✅ {task['display_name']}: {len(findings)} vulnerabilities")
-                else:
-                    print(f"✅ {task['display_name']}: no issues")
-
-    elapsed_time = time.time() - start_time
-
-    # Log filtering summary if applicable
-    if code_quality_filtered_count > 0:
-        logger.info(f"🔍 Filtered out {code_quality_filtered_count} low/medium code quality findings (scan_level={scan_level})")
-
-    # Summary message
-    if code_quality_findings_count > 0:
-        print(f"🎯 Scan complete: {security_findings_count} security issues + {code_quality_findings_count} code quality issues in {elapsed_time:.1f}s")
-    else:
-        print(f"🎯 Scan complete: {security_findings_count} vulnerabilities found in {elapsed_time:.1f}s")
-
-    return all_findings
-
-def run_auto_mode() -> List[Dict[str, Any]]:
-    """Run scanner in automatic mode (GitHub Actions)."""
-    # Validate environment configuration first
-    try:
-        env_config = validate_environment_config()
-    except Exception as e:
-        logger.error(f"Environment configuration validation failed: {e}")
-        return []
-
-    # Determine repo path based on how scanner is deployed
-    if is_github_actions():
-        # Check if we're running as a GitHub Action (external) or copied files (internal)
-        workspace = os.getenv('GITHUB_WORKSPACE', '')
-        current_dir = os.getcwd()
-
-        # If GITHUB_WORKSPACE differs from current directory, we're running as external action
-        if workspace and workspace != current_dir and Path(workspace).exists():
-            repo_path = validate_repo_path(workspace)
-            print(f"🔧 Running as GitHub Action - scanning external repo: {workspace}")
-        else:
-            # We're running from copied files within the target repo
-            repo_path = validate_repo_path(current_dir)
-            print(f"🔧 Running from copied files - scanning current directory: {current_dir}")
-    else:
-        # Use current directory as repo path for local interactive runs
-        repo_path = validate_repo_path(os.getcwd())
-
-    # Set up output directory with new repo/branch structure
-    output_path = get_output_path(str(repo_path), BASE_OUTPUT_DIR)
-
-    # Clean up old scans (keep only most recent)
-    cleanup_old_scans(output_path)
-
-    # Set up directory structure
-    output_dirs = setup_output_directories(output_path)
-    output_dir = output_dirs['base']
-    
-    # Run all scanners
-    scanners_to_run = ["semgrep", "gitleaks", "trivy"]
-    
-    print(f"🔒 AppSec-Sentinel - Auto Mode")
-    print(f"📁 Scanning: {repo_path}")
-    print(f"📁 Output: {output_dir}")
-    print(f"🔍 Scanners: {', '.join(scanners_to_run)}")
-    
-    # Debug info for troubleshooting CI issues
-    if is_github_actions():
-        print(f"🔧 Debug: Current working directory: {os.getcwd()}")
-        print(f"🔧 Debug: GITHUB_WORKSPACE: {os.getenv('GITHUB_WORKSPACE', 'not set')}")
-
-    # Get scan level from environment for CI/CD consistency
-    scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high')
-    enable_code_quality = os.getenv('APPSEC_CODE_QUALITY', 'true').lower() == 'true'
-    print(f"🔍 Scan level: {scan_level}")
-
-    # Run scanners in parallel
-    all_findings = run_security_scans(str(repo_path), scanners_to_run, output_dir, scan_level, enable_code_quality)
-    
-    # Generate reports with cross-file enhancement (same as interactive mode)
-    if all_findings:
-        print(f"\n📊 Found {len(all_findings)} security findings")
-        
-        # Enhance findings with cross-file analysis (same as interactive mode)
-        enhanced_findings = all_findings
-        context_summary = ""
-        
-        if CROSS_FILE_AVAILABLE and all_findings:
-            print("🧠 Running cross-file enhancement analysis...")
-            try:
-                from enhanced_analyzer import enhance_findings_with_cross_file
-                enhanced_findings = asyncio.run(enhance_findings_with_cross_file(all_findings, str(repo_path)))
-                
-                # Context will be shown in the detailed section
-                context_summary = ""
-                
-                print(f"✅ Enhanced {len(enhanced_findings)} findings with cross-file analysis")
-            except Exception as e:
-                logger.warning(f"Cross-file enhancement failed, using standard analysis: {e}")
-                enhanced_findings = all_findings
-        
-        # Generate HTML report
-        try:
-            # Generate AI summary with cross-file insights
-            if enhanced_findings:
-                # Separate security from code quality findings
-                security_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') != 'code_quality']
-                code_quality_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') == 'code_quality']
-
-                summary_stats = {
-                    'total_security': len(security_findings),
-                    'total_code_quality': len(code_quality_findings),
-                    'critical': len([f for f in security_findings if f.get('severity', '').lower() == 'critical']),
-                    'high': len([f for f in security_findings if f.get('severity', '').lower() in ['high', 'error']]),
-                    'sast': len([f for f in security_findings if f.get('tool') == 'semgrep']),
-                    'secrets': len([f for f in security_findings if f.get('tool') == 'gitleaks']),
-                    'deps': len([f for f in security_findings if f.get('tool') == 'trivy'])
-                }
-
-                # Build security findings section
-                security_breakdown = f"""**Security Issues ({summary_stats['total_security']} total):**
-• {summary_stats['critical']} critical vulnerabilities requiring immediate attention
-• {summary_stats['high']} high-severity issues needing prompt remediation
-• {summary_stats['sast']} code security issues (SAST)
-• {summary_stats['secrets']} secrets detected in repository
-• {summary_stats['deps']} vulnerable dependencies identified"""
-
-                # Add code quality section if present
-                code_quality_section = ""
-                if summary_stats['total_code_quality'] > 0:
-                    code_quality_section = f"""
-
-**Code Quality Issues ({summary_stats['total_code_quality']} total):**
-• Maintainability, complexity, and best practice violations
-• Always shown regardless of security scan level"""
-
-                ai_summary = f"""🛡️ Security Analysis Complete
-
-**Risk Assessment:** {'🔴 High Risk' if summary_stats['critical'] > 0 else '🟡 Medium Risk' if summary_stats['high'] > 0 else '🟢 Low Risk'}
-
-{security_breakdown}{code_quality_section}{context_summary}
-
-**Recommended Actions:**
-1. Prioritize critical vulnerabilities for immediate patching
-2. Review and rotate any exposed secrets
-3. Update vulnerable dependencies to latest secure versions
-4. Implement security code review practices"""
-            else:
-                ai_summary = "🎉 Security scan completed successfully with no critical or high-severity issues found."
-                
-            generate_html_report(enhanced_findings, ai_summary, str(output_dir), str(repo_path), detect_languages(Path(repo_path)))
-            html_report_path = output_dir / "report.html"
-            print(f"📄 HTML report generated: {html_report_path}")
-        except Exception as e:
-            print(f"⚠️  HTML report generation failed: {e}")
-            logger.error(f"Failed to generate HTML report: {e}", exc_info=True)
-        
-        # Generate cross-file enhanced reports if available
-        if CROSS_FILE_AVAILABLE and enhanced_findings:
-            try:
-                from enhanced_analyzer import generate_cross_file_enhanced_report
-                enhanced_report = asyncio.run(generate_cross_file_enhanced_report(enhanced_findings, str(repo_path)))
-                
-                # Create PR findings summary
-                pr_summary_path = output_dir / "pr-findings.txt"
-                
-                with open(pr_summary_path, 'w') as f:
-                    f.write(enhanced_report.get('pr_summary', 'No PR summary available'))
-                
-                print(f"📄 cross-file enhanced PR summary: {pr_summary_path}")
-            except Exception as e:
-                logger.warning(f"cross-file report generation failed: {e}")
-        
-        # Auto-generate SBOM as part of security scan (same as interactive mode)
-        if SBOM_AVAILABLE:
-            print("📋 Auto-generating SBOM for compliance...")
-            try:
-                asyncio.run(generate_repository_sbom(str(repo_path), str(output_dir / "sbom")))
-                print("✅ SBOM generated in outputs/sbom/")
-            except Exception as e:
-                logger.warning(f"SBOM generation failed: {e}")
-                print("⚠️ SBOM generation failed (scan continues)")
-        else:
-            print("⚠️ SBOM generation requires Syft (scan continues without SBOM)")
-        
-        # Run auto-remediation with enhanced findings
-        handle_auto_remediation(str(repo_path), enhanced_findings)
-    else:
-        print("🎉 No security issues found!")
-        
-        # Generate SBOM even when no vulnerabilities are found
-        if SBOM_AVAILABLE:
-            print("📋 Auto-generating SBOM for compliance...")
-            try:
-                asyncio.run(generate_repository_sbom(str(repo_path), str(output_dir / "sbom")))
-                print("✅ SBOM generated in outputs/sbom/")
-            except Exception as e:
-                logger.warning(f"SBOM generation failed: {e}")
-                print("⚠️ SBOM generation failed")
-    
-    return enhanced_findings
-
-# Cross-File Integration for enhanced AI analysis
-try:
-    from enhanced_analyzer import enhance_findings_with_cross_file, generate_cross_file_enhanced_report
-    CROSS_FILE_AVAILABLE = True
-except ImportError:
-    CROSS_FILE_AVAILABLE = False
-
-# SBOM generation
-try:
-    from sbom_generator import generate_repository_sbom
-    SBOM_AVAILABLE = True
-except ImportError:
-    SBOM_AVAILABLE = False
-
-
-def show_interactive_menu() -> str:
-    """Show interactive menu and return user choice"""
-    print("🎯 Choose an option:")
-    print("   [1] Security scan with auto-fixes + SBOM")
-    print("   [q] Quit")
-
-    while True:
-        choice = Prompt.ask("\nEnter your choice [1, q]", choices=["1", "q"])
-        if choice in ['1', 'q']:
-            return choice
-        print("Invalid choice. Please enter 1 or q")
-
-def select_scan_level() -> str:
-    """Let user choose severity level for scanning"""
-    print("\n🔍 Select severity level:")
-    print("   [1] Critical & High only (Recommended - fewer false positives)")
-    print("   [2] All severity levels (More findings, may include noise)")
-
-    while True:
-        choice = Prompt.ask("\nChoose severity level", choices=["1", "2"])
-        if choice == '1':
-            return 'critical-high'
-        elif choice == '2':
-            return 'all'
-        else:
-            print("Invalid choice. Please enter 1 or 2")
-
-def select_tools() -> set:
-    """Let user choose which tools to run"""
-    print("\n🔧 Select tools to run:")
-    print("   [1] All (comprehensive scan)")
-    print("   [2] Security only (semgrep + gitleaks + trivy)")
-    print("   [3] SAST only (semgrep)")
-    print("   [4] Secrets only (gitleaks)")
-    print("   [5] Dependencies only (trivy)")
-    print("   [6] Custom selection...")
-
-    while True:
-        choice = Prompt.ask("\nChoose tool selection", choices=["1", "2", "3", "4", "5", "6"])
-
-        if choice == '1':
-            return {'semgrep', 'trivy', 'gitleaks', 'code_quality', 'sbom'}
-        elif choice == '2':
-            return {'semgrep', 'trivy', 'gitleaks', 'sbom'}
-        elif choice == '3':
-            return {'semgrep', 'code_quality', 'sbom'}
-        elif choice == '4':
-            return {'gitleaks', 'sbom'}
-        elif choice == '5':
-            return {'trivy', 'sbom'}
-        elif choice == '6':
-            # Custom selection with checkboxes
-            print("\n📋 Select individual tools (y/n):")
-            tools = set()
-
-            if Confirm.ask("   Run Semgrep (SAST)?", default=True):
-                tools.add('semgrep')
-
-            if Confirm.ask("   Run Trivy (Dependencies/SCA)?", default=True):
-                tools.add('trivy')
-
-            if Confirm.ask("   Run Gitleaks (Secrets)?", default=True):
-                tools.add('gitleaks')
-
-            if Confirm.ask("   Run Code Quality linters?", default=True):
-                tools.add('code_quality')
-
-            if Confirm.ask("   Generate SBOM?", default=True):
-                tools.add('sbom')
-
-            if not tools:
-                print("❌ No tools selected. Please select at least one tool.")
-                continue
-
-            # Display selection
-            print(f"\n✅ Selected tools: {', '.join(sorted(tools))}")
-            return tools
-        else:
-            print("Invalid choice. Please enter 1-6")
-
-def handle_auto_remediation(repo_path: str, all_findings: List[Dict[str, Any]], auto_choice: Optional[int] = None, web_mode: bool = False, auto_fix_enabled: bool = None, auto_fix_mode_arg: str = None) -> dict:
-    """Handle auto-remediation flow for findings"""
+# ---------------------------------------------------------------------------
+# Auto-remediation
+# ---------------------------------------------------------------------------
+
+def handle_auto_remediation(
+    repo_path: str,
+    all_findings: list[dict[str, Any]],
+    auto_choice: int | None = None,
+) -> dict:
+    """Handle auto-remediation flow for findings."""
     total_findings = len(all_findings)
-    critical_findings = len([f for f in all_findings if f.get('severity', '').lower() in ['critical']])
+    critical_findings = len([f for f in all_findings if f.get('severity', '').lower() == 'critical'])
     high_findings = len([f for f in all_findings if f.get('severity', '').lower() in ['high', 'error']])
-    
-    print(f"\n📊 Scan Results:")
-    print(f"   • Total findings: {total_findings}")
-    print(f"   • Critical: {critical_findings}")
-    print(f"   • High: {high_findings}")
-    
+
+    print("\n📊 Scan Results:")
+    print(f"   Total findings: {total_findings}")
+    print(f"   Critical: {critical_findings}")
+    print(f"   High: {high_findings}")
+
     if total_findings == 0:
         print("🎉 No security issues found! Your code looks clean.")
         return {"success": True, "message": "No vulnerabilities found"}
-    
-    # Check for auto-fixable findings
+
     sast_findings = [f for f in all_findings if f.get('tool') in ['semgrep', 'gitleaks']]
     dependency_findings = [f for f in all_findings if f.get('tool') == 'trivy' and f.get('fixed_version')]
     secrets_count = len([f for f in all_findings if f.get('tool') == 'gitleaks'])
     semgrep_count = len([f for f in all_findings if f.get('tool') == 'semgrep'])
-    
-    # Debug: Trace finding counts for CI/CD vs CLI discrepancy investigation
-    env_type = "CI/CD" if is_github_actions() else "CLI"
-    logger.debug(f"[{env_type}] Repository path: {repo_path}")
-    logger.debug(f"[{env_type}] Working directory: {os.getcwd()}")
-    logger.debug(f"[{env_type}] Finding counts - Total: {len(all_findings)}, Semgrep: {semgrep_count}, Secrets: {secrets_count}")
-    
-    # Debug: Show breakdown of Semgrep findings by severity
-    semgrep_findings_by_severity = {}
-    for finding in [f for f in all_findings if f.get('tool') == 'semgrep']:
-        severity = finding.get('severity', 'unknown')
-        semgrep_findings_by_severity[severity] = semgrep_findings_by_severity.get(severity, 0) + 1
-    logger.debug(f"[{env_type}] Semgrep severity breakdown: {semgrep_findings_by_severity}")
-    
-    # Debug: Log all Semgrep check_ids for comparison
-    semgrep_check_ids = [f.get('check_id', 'unknown') for f in all_findings if f.get('tool') == 'semgrep']
-    logger.debug(f"[{env_type}] Semgrep check_ids found: {semgrep_check_ids[:5]}...")  # Show first 5
-    
-    if sast_findings or dependency_findings:
-        print(f"\n🔧 Auto-Remediation Options:")
-        if sast_findings:
-            if semgrep_count > 0 and secrets_count > 0:
-                print(f"   Found {semgrep_count} SAST vulnerabilities (auto-fixable) + {secrets_count} secrets (manual review required)")
-            elif semgrep_count > 0:
-                print(f"   Found {semgrep_count} SAST vulnerabilities that might be auto-fixable")
-            elif secrets_count > 0:
-                print(f"   Found {secrets_count} secrets detected (manual review required)")
-        total_deps = len([f for f in all_findings if f.get('tool') == 'trivy'])
-        if dependency_findings:
-            print(f"   Found {len(dependency_findings)} auto-fixable dependency vulnerabilities ({total_deps} total dependencies)")
-        if sast_findings and dependency_findings:
-            print("   [1] Auto-fix code issues (SAST) + flag secrets")
-            print("   [2] Auto-fix dependencies only") 
-            print("   [3] Auto-fix both (creates 2 separate PRs)")
-            print("   [4] Skip auto-fix")
-        elif sast_findings:
-            print("   [1] Auto-fix code issues (SAST) + flag secrets")
-            print("   [4] Skip auto-fix")
-        elif dependency_findings:
-            print("   [2] Auto-fix dependencies only")
-            print("   [4] Skip auto-fix")
-        
-        # Handle automated mode (when auto_choice parameter is provided)
-        if auto_choice is not None:
-            choice = str(auto_choice)
-            print(f"🤖 Automated mode: Using option {choice}")
-            
-        # Handle CI/CD and Web environments automatically
-        # Priority: explicit arg > env var > default
-        elif is_github_actions() or web_mode or os.getenv('APPSEC_WEB_MODE', 'false').lower() == 'true':
-            # In CI environments, determine auto-fix behavior from structure
-            if auto_fix_enabled is None:
-                auto_fix_enabled = os.getenv('APPSEC_AUTO_FIX', 'false').lower() == 'true'
-            
-            # Use arg if provided, else env var
-            auto_fix_mode = auto_fix_mode_arg if auto_fix_mode_arg is not None else os.getenv('APPSEC_AUTO_FIX_MODE', '')
-            
-            if auto_fix_mode in ['1', '2', '3', '4']:
-                # Validate the mode makes sense given available findings
-                if auto_fix_mode == '2' and not dependency_findings:
-                    # User wants dependency-only fix but no dependencies found
-                    choice = '1' if sast_findings else '4'
-                    print(f"   → Adjusting mode: No dependencies found, using mode {choice}")
-                elif auto_fix_mode == '3' and not dependency_findings:
-                    # User wants both but no dependencies found
-                    choice = '1' if sast_findings else '4'  
-                    print(f"   → Adjusting mode: No dependencies found, using mode {choice} (SAST only)")
-                elif auto_fix_mode == '3' and not sast_findings:
-                    # User wants both but no SAST findings found
-                    choice = '2' if dependency_findings else '4'
-                    print(f"   → Adjusting mode: No SAST findings found, using mode {choice}")
-                else:
-                    choice = auto_fix_mode
-            elif auto_fix_enabled:
-                # If auto-fix is enabled but no specific mode, choose based on what's available
-                if sast_findings and dependency_findings:
-                    choice = '3'  # Auto-fix both
-                elif sast_findings:
-                    choice = '1'  # Auto-fix SAST only
-                elif dependency_findings:
-                    choice = '2'  # Auto-fix dependencies only
-                else:
-                    choice = '4'  # Nothing to auto-fix
-            else:
-                choice = '4'  # Auto-fix disabled
-                
-            env_type = "CI Environment" if is_github_actions() else "Web Interface"
-            print(f"🤖 {env_type} detected - using auto-fix mode: {choice}")
-            if choice == '1':
-                print("   → Auto-fixing code issues (SAST) + flagging secrets")
-            elif choice == '2':
-                print("   → Auto-fixing dependencies only")
-            elif choice == '3':
-                print("   → Auto-fixing both (creates 2 separate PRs)")
-            else:
-                print("   → Skipping auto-fix")
-        else:
-            # Interactive mode for local development
-            while True:
-                choice = Prompt.ask("\nChoose auto-fix option", choices=["1", "2", "3", "4"])
-                if choice in ['1', '2', '3', '4']:
-                    break
-                print("Invalid choice. Please enter 1, 2, 3, or 4")
-        
-        # Execute auto-remediation
-        if choice != '4':
-            from auto_remediation.remediation import create_remediation_pr
-            
-            try:
-                sast_success = True
-                dep_success = True
-                
-                if choice in ['1', '3'] and sast_findings:
-                    if semgrep_count > 0 and secrets_count > 0:
-                        print(f"🔧 Creating code security PR (SAST fixes + secret flagging)...")
-                    elif semgrep_count > 0:
-                        print(f"🔧 Creating SAST auto-fix PR...")
-                    else:
-                        print(f"🔧 Creating secrets detection PR (manual review required)...")
-                    sast_success = create_remediation_pr(repo_path, sast_findings, "sast")
-                
-                if choice in ['2', '3'] and dependency_findings:
-                    print(f"🔧 Creating dependency auto-fix PR...")
-                    dep_success = create_remediation_pr(repo_path, dependency_findings, "dependencies")
-                
-                if sast_success and dep_success:
-                    print("\n✅ Auto-remediation complete!")
-                    return {"success": True, "message": "Auto-remediation completed successfully"}
-                else:
-                    print("\n⚠️ Auto-remediation completed with issues (check errors above)")
-                    return {"success": False, "message": "Auto-remediation had issues - check logs"}
-                
-            except Exception as e:
-                print(f"\n❌ Auto-remediation failed: {e}")
-                return {"success": False, "message": f"Auto-remediation failed: {e}"}
-    else:
+
+    if not sast_findings and not dependency_findings:
         print("\n💡 No auto-fixable vulnerabilities found in this scan.")
         return {"success": True, "message": "No auto-fixable vulnerabilities found"}
 
-def run_security_scan_mode(repo_path: str) -> None:
-    """
-    Execute security scan mode (interactive menu choice 1).
+    # Display options
+    print("\n🔧 Auto-Remediation Options:")
+    if sast_findings:
+        if semgrep_count > 0 and secrets_count > 0:
+            print(f"   Found {semgrep_count} SAST vulnerabilities (auto-fixable) + {secrets_count} secrets (manual review required)")
+        elif semgrep_count > 0:
+            print(f"   Found {semgrep_count} SAST vulnerabilities that might be auto-fixable")
+        elif secrets_count > 0:
+            print(f"   Found {secrets_count} secrets detected (manual review required)")
 
-    Args:
-        repo_path: Path to repository to scan
-    """
-    from scanners.validation import detect_languages
+    total_deps = len([f for f in all_findings if f.get('tool') == 'trivy'])
+    if dependency_findings:
+        print(f"   Found {len(dependency_findings)} auto-fixable dependency vulnerabilities ({total_deps} total dependencies)")
 
-    # Set up output directory with new repo/branch structure
+    if sast_findings and dependency_findings:
+        print("   [1] Auto-fix code issues (SAST) + flag secrets")
+        print("   [2] Auto-fix dependencies only")
+        print("   [3] Auto-fix both (creates 2 separate PRs)")
+        print("   [4] Skip auto-fix")
+    elif sast_findings:
+        print("   [1] Auto-fix code issues (SAST) + flag secrets")
+        print("   [4] Skip auto-fix")
+    elif dependency_findings:
+        print("   [2] Auto-fix dependencies only")
+        print("   [4] Skip auto-fix")
+
+    # Determine choice
+    choice = _determine_remediation_choice(auto_choice, sast_findings, dependency_findings)
+
+    # Execute
+    if choice == '4':
+        return {"success": True, "message": "Auto-fix skipped"}
+
+    return _execute_remediation(repo_path, choice, sast_findings, dependency_findings,
+                                semgrep_count, secrets_count)
+
+
+def _determine_remediation_choice(
+    auto_choice: int | None,
+    sast_findings: list,
+    dependency_findings: list,
+) -> str:
+    """Determine which remediation option to use."""
+    if auto_choice is not None:
+        choice = str(auto_choice)
+        print(f"🤖 Automated mode: Using option {choice}")
+        return choice
+
+    if is_github_actions() or os.getenv('APPSEC_WEB_MODE', 'false').lower() == 'true':
+        auto_fix_enabled = os.getenv('APPSEC_AUTO_FIX', 'false').lower() == 'true'
+        auto_fix_mode = os.getenv('APPSEC_AUTO_FIX_MODE', '')
+
+        if auto_fix_mode in ['1', '2', '3', '4']:
+            # Adjust mode if needed findings aren't available
+            if auto_fix_mode == '2' and not dependency_findings:
+                choice = '1' if sast_findings else '4'
+            elif auto_fix_mode == '3' and not dependency_findings:
+                choice = '1' if sast_findings else '4'
+            elif auto_fix_mode == '3' and not sast_findings:
+                choice = '2' if dependency_findings else '4'
+            else:
+                choice = auto_fix_mode
+        elif auto_fix_enabled:
+            if sast_findings and dependency_findings:
+                choice = '3'
+            elif sast_findings:
+                choice = '1'
+            elif dependency_findings:
+                choice = '2'
+            else:
+                choice = '4'
+        else:
+            choice = '4'
+
+        env_type = "CI Environment" if is_github_actions() else "Web Interface"
+        print(f"🤖 {env_type} detected - using auto-fix mode: {choice}")
+        return choice
+
+    # Interactive
+    while True:
+        choice = input("\nChoose auto-fix option [1-4]: ").strip()
+        if choice in ['1', '2', '3', '4']:
+            return choice
+        print("Invalid choice. Please enter 1, 2, 3, or 4")
+
+
+def _execute_remediation(
+    repo_path: str,
+    choice: str,
+    sast_findings: list,
+    dependency_findings: list,
+    semgrep_count: int,
+    secrets_count: int,
+) -> dict:
+    """Execute the chosen remediation option."""
+    from auto_remediation.remediation import create_remediation_pr
+
+    try:
+        sast_success = dep_success = True
+
+        if choice in ['1', '3'] and sast_findings:
+            if semgrep_count > 0 and secrets_count > 0:
+                print("🔧 Creating code security PR (SAST fixes + secret flagging)...")
+            elif semgrep_count > 0:
+                print("🔧 Creating SAST auto-fix PR...")
+            else:
+                print("🔧 Creating secrets detection PR (manual review required)...")
+            sast_success = create_remediation_pr(repo_path, sast_findings, "sast")
+
+        if choice in ['2', '3'] and dependency_findings:
+            print("🔧 Creating dependency auto-fix PR...")
+            dep_success = create_remediation_pr(repo_path, dependency_findings, "dependencies")
+
+        if sast_success and dep_success:
+            print("\n✅ Auto-remediation complete!")
+            return {"success": True, "message": "Auto-remediation completed successfully"}
+        else:
+            print("\n⚠️ Auto-remediation completed with issues (check errors above)")
+            return {"success": False, "message": "Auto-remediation had issues - check logs"}
+
+    except Exception as e:
+        print(f"\n❌ Auto-remediation failed: {e}")
+        return {"success": False, "message": f"Auto-remediation failed: {e}"}
+
+
+# ---------------------------------------------------------------------------
+# Mode runners
+# ---------------------------------------------------------------------------
+
+async def run_auto_mode_async() -> list[dict[str, Any]]:
+    """Run scanner in automatic mode (GitHub Actions). Single async entry point."""
+    try:
+        validate_environment_config()
+    except Exception as e:
+        logger.error(f"Environment configuration validation failed: {e}")
+        return []
+
+    # Determine repo path
+    if is_github_actions():
+        workspace = os.getenv('GITHUB_WORKSPACE', '')
+        current_dir = os.getcwd()
+        if workspace and workspace != current_dir and Path(workspace).exists():
+            repo_path = validate_repo_path(workspace)
+            print(f"🔧 Running as GitHub Action - scanning external repo: {workspace}")
+        else:
+            repo_path = validate_repo_path(current_dir)
+            print(f"🔧 Running from copied files - scanning current directory: {current_dir}")
+    else:
+        repo_path = validate_repo_path(os.getcwd())
+
+    # Set up output
+    output_path = get_output_path(str(repo_path), BASE_OUTPUT_DIR)
+    cleanup_old_scans(output_path)
+    output_dirs = setup_output_directories(output_path)
+    output_dir = output_dirs['base']
+
+    scanners_to_run = ["semgrep", "gitleaks", "trivy"]
+    scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high')
+
+    print("🔒 AppSec-Sentinel - Auto Mode")
+    print(f"📁 Scanning: {repo_path}")
+    print(f"📁 Output: {output_dir}")
+    print(f"🔍 Scan level: {scan_level}")
+
+    # Run full pipeline (single async call - no nested asyncio.run)
+    all_findings, enhanced_findings = await run_full_scan_pipeline(
+        str(repo_path), scanners_to_run, output_dir, scan_level,
+    )
+
+    if all_findings:
+        handle_auto_remediation(str(repo_path), enhanced_findings)
+    else:
+        print("🎉 No security issues found!")
+
+    return enhanced_findings
+
+
+async def run_interactive_scan_async(repo_path: str) -> None:
+    """Execute interactive security scan. Single async entry point."""
+    # Set up output
     output_path = get_output_path(repo_path, BASE_OUTPUT_DIR)
     cleanup_old_scans(output_path)
     output_dirs = setup_output_directories(output_path)
@@ -1129,181 +360,60 @@ def run_security_scan_mode(repo_path: str) -> None:
 
     print(f"📁 Output directory: {output_dir}")
 
-    # Let user choose tools to run
+    # Get user selections
     selected_tools = select_tools()
     scan_level = select_scan_level()
 
-    # Convert tool selection to scanner list (security scanners only)
-    scanners_to_run = []
-    if 'semgrep' in selected_tools:
-        scanners_to_run.append('semgrep')
-    if 'gitleaks' in selected_tools:
-        scanners_to_run.append('gitleaks')
-    if 'trivy' in selected_tools:
-        scanners_to_run.append('trivy')
-
-    # Code quality and SBOM are handled separately
+    scanners_to_run = [t for t in ['semgrep', 'gitleaks', 'trivy'] if t in selected_tools]
     run_code_quality = 'code_quality' in selected_tools
     run_sbom = 'sbom' in selected_tools
 
-    # Temporarily override APPSEC_CODE_QUALITY for this scan (with proper cleanup)
+    # Temporarily override code quality setting
     original_code_quality = os.getenv('APPSEC_CODE_QUALITY')
     try:
         os.environ['APPSEC_CODE_QUALITY'] = 'true' if run_code_quality else 'false'
 
         print(f"\n🔍 Running security scan (level: {scan_level})...")
-        all_findings = run_security_scans(repo_path, scanners_to_run, output_dir, scan_level)
+        all_findings, enhanced_findings = await run_full_scan_pipeline(
+            repo_path, scanners_to_run, output_dir, scan_level, run_sbom_flag=run_sbom,
+        )
     finally:
-        # Restore original code quality setting (always runs, even on exception)
         if original_code_quality is not None:
             os.environ['APPSEC_CODE_QUALITY'] = original_code_quality
         else:
             os.environ.pop('APPSEC_CODE_QUALITY', None)
 
-    # Generate reports with cross-file enhancement
-    try:
-        print("📊 Generating reports...")
-
-        # Enhance findings with cross-file analysis first
-        enhanced_findings = all_findings
-        context_summary = ""
-
-        if CROSS_FILE_AVAILABLE and all_findings:
-            print("🧠 Running cross-file enhancement analysis...")
-            try:
-                from enhanced_analyzer import enhance_findings_with_cross_file
-                enhanced_findings = asyncio.run(enhance_findings_with_cross_file(all_findings, repo_path))
-                context_summary = ""  # Remove from AI summary
-                print(f"✅ Enhanced {len(enhanced_findings)} findings with cross-file analysis")
-            except Exception as e:
-                logger.warning(f"Cross-file enhancement failed, using standard analysis: {e}")
-                enhanced_findings = all_findings
-
-        # Generate AI summary with cross-file insights
-        if enhanced_findings:
-            # Separate security from code quality findings
-            security_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') != 'code_quality']
-            code_quality_findings = [f for f in enhanced_findings if f.get('extra', {}).get('metadata', {}).get('category') == 'code_quality']
-
-            summary_stats = {
-                'total_security': len(security_findings),
-                'total_code_quality': len(code_quality_findings),
-                'critical': len([f for f in security_findings if f.get('severity', '').lower() == 'critical']),
-                'high': len([f for f in security_findings if f.get('severity', '').lower() in ['high', 'error']]),
-                'sast': len([f for f in security_findings if f.get('tool') == 'semgrep']),
-                'secrets': len([f for f in security_findings if f.get('tool') == 'gitleaks']),
-                'deps': len([f for f in security_findings if f.get('tool') == 'trivy'])
-            }
-
-            # Build security findings section
-            security_breakdown = f"""**Security Issues ({summary_stats['total_security']} total):**
-• {summary_stats['critical']} critical vulnerabilities requiring immediate attention
-• {summary_stats['high']} high-severity issues needing prompt remediation
-• {summary_stats['sast']} code security issues (SAST)
-• {summary_stats['secrets']} secrets detected in repository
-• {summary_stats['deps']} vulnerable dependencies identified"""
-
-            # Add code quality section if present
-            code_quality_section = ""
-            if summary_stats['total_code_quality'] > 0:
-                code_quality_section = f"""
-
-**Code Quality Issues ({summary_stats['total_code_quality']} total):**
-• Maintainability, complexity, and best practice violations
-• Always shown regardless of security scan level"""
-
-            ai_summary = f"""🛡️ Security Analysis Complete
-
-**Risk Assessment:** {'🔴 High Risk' if summary_stats['critical'] > 0 else '🟡 Medium Risk' if summary_stats['high'] > 0 else '🟢 Low Risk'}
-
-{security_breakdown}{code_quality_section}{context_summary}
-
-**Recommended Actions:**
-1. Prioritize critical vulnerabilities for immediate patching
-2. Review and rotate any exposed secrets
-3. Update vulnerable dependencies to latest secure versions
-4. Implement security code review practices"""
-        else:
-            ai_summary = "🎉 Security scan completed successfully with no critical or high-severity issues found."
-
-        try:
-            generate_html_report(enhanced_findings, ai_summary, str(output_dir), str(repo_path), detect_languages(Path(repo_path)))
-            html_report_path = output_dir / "report.html"
-            print(f"📄 HTML report: {html_report_path}")
-        except Exception as report_error:
-            print(f"⚠️  HTML report generation failed: {report_error}")
-            logger.error(f"HTML report error: {report_error}", exc_info=True)
-
-        # Generate cross-file enhanced reports if available
-        if CROSS_FILE_AVAILABLE and enhanced_findings:
-            try:
-                from enhanced_analyzer import generate_cross_file_enhanced_report
-                enhanced_report = asyncio.run(generate_cross_file_enhanced_report(enhanced_findings, repo_path))
-
-                # Create PR findings summary
-                pr_summary_path = output_dir / "pr-findings.txt"
-
-                with open(pr_summary_path, 'w') as f:
-                    f.write(enhanced_report.get('pr_summary', 'No PR summary available'))
-
-                print(f"📄 cross-file enhanced PR summary: {pr_summary_path}")
-            except Exception as e:
-                logger.warning(f"cross-file report generation failed: {e}")
-    except Exception as e:
-        print(f"⚠️  Report generation failed: {e}")
-        logger.error(f"Report generation error: {e}", exc_info=True)
-
-    # Generate SBOM if user selected it
-    if run_sbom and SBOM_AVAILABLE:
-        print("📋 Generating SBOM for compliance...")
-        try:
-            asyncio.run(generate_repository_sbom(repo_path, str(output_dir / "sbom")))
-            print("✅ SBOM generated in outputs/sbom/")
-        except Exception as e:
-            logger.warning(f"SBOM generation failed: {e}")
-            print("⚠️ SBOM generation failed (scan continues)")
-    elif run_sbom and not SBOM_AVAILABLE:
-        print("⚠️ SBOM generation requires Syft but it's not installed")
-
-    # Handle auto-remediation for findings
-    logger.info("🔧 Starting handle_auto_remediation from main choice 1")
+    # Auto-remediation
     handle_auto_remediation(repo_path, enhanced_findings)
-    logger.info("✅ Completed handle_auto_remediation from main choice 1")
 
 
-
+# ---------------------------------------------------------------------------
+# Usage tracking
+# ---------------------------------------------------------------------------
 
 def track_usage() -> None:
-    """
-    Track usage analytics for IP monitoring while repository is public.
-    Logs essential usage metrics without exposing sensitive information.
-    """
+    """Track usage analytics locally for IP monitoring."""
     try:
         import platform
         import getpass
         from datetime import datetime, timezone
 
-        # Collect basic usage metrics (no sensitive data)
         usage_data = {
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'version': '1.3.0',
             'mode': 'CI/CD' if is_github_actions() else 'CLI',
             'platform': platform.system(),
-            'user_id': getpass.getuser()[:8] + "***",  # Partially anonymized
+            'user_id': getpass.getuser()[:8] + "***",
             'scan_level': os.getenv('APPSEC_SCAN_LEVEL', 'critical-high'),
-            'auto_fix_enabled': os.getenv('APPSEC_AUTO_FIX', 'false') == 'true'
+            'auto_fix_enabled': os.getenv('APPSEC_AUTO_FIX', 'false') == 'true',
         }
-        
-        # Log usage for monitoring (no external transmission)
-        logger.info(f"📊 Usage Analytics: {json.dumps(usage_data, indent=2)}")
-        
-        # Store usage log locally for IP monitoring
+
+        logger.info(f"Usage Analytics: {json.dumps(usage_data)}")
+
         usage_log_dir = Path("outputs/analytics")
         usage_log_dir.mkdir(parents=True, exist_ok=True)
-        
         usage_file = usage_log_dir / f"usage_{datetime.now().strftime('%Y%m%d')}.json"
-        
-        # Append to daily usage log
+
         existing_logs = []
         if usage_file.exists():
             try:
@@ -1311,68 +421,55 @@ def track_usage() -> None:
                     existing_logs = json.load(f)
             except Exception:
                 existing_logs = []
-        
+
         existing_logs.append(usage_data)
-        
         with open(usage_file, 'w') as f:
             json.dump(existing_logs, f, indent=2)
-            
-        logger.debug(f"Usage tracked to {usage_file}")
-        
+
     except Exception as e:
         logger.debug(f"Usage tracking failed (non-critical): {e}")
 
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
 def main() -> None:
-    """
-    Main entry point - Interactive security analysis for consultants.
-    """
-    import sys
-    
-    # Track usage for IP monitoring
+    """Main entry point - single asyncio.run() for the entire session."""
     track_usage()
-    
-    # Enable debug mode if requested
+
     if os.getenv('APPSEC_DEBUG', 'false').lower() == 'true':
         set_debug_mode(True)
         logger.debug("AppSec-Sentinel starting in debug mode")
-    
-    # Environment detection for debugging CI/CD vs CLI differences
+
     env_type = "CI/CD" if is_github_actions() else "CLI"
     scan_level = os.getenv('APPSEC_SCAN_LEVEL', 'critical-high')
     logger.info(f"Starting AppSec-Sentinel - Mode: {env_type}, Scan Level: {scan_level}")
-    
-    # Debug: Log environment variables that might affect scanning
-    debug_env_vars = ['APPSEC_SCAN_LEVEL', 'APPSEC_AUTO_FIX', 'APPSEC_AUTO_FIX_MODE', 'GITHUB_ACTIONS']
-    logger.debug(f"Environment variables: {[(var, os.getenv(var, 'not_set')) for var in debug_env_vars]}")
-    
-    # Check if running in GitHub Actions (for project CI/CD)
+
+    # CI/CD auto mode
     if is_github_actions():
-        return run_auto_mode()
+        asyncio.run(run_auto_mode_async())
+        return
 
-    # Otherwise run interactive mode (CLI or Web)
-    print("\n" + "="*80)
-    print("🔒 AppSec-Sentinel - © 2025 Open Source Security Scanner")
-    print("="*80)
+    # Interactive mode
+    print("\n" + "=" * 80)
+    print("🔒 AppSec-Sentinel - Open Source Security Scanner")
+    print("=" * 80)
     print("Comprehensive security scanner with cross-file analysis and optional LLM-powered fixes")
-    print("📖 MIT Licensed - Free for personal and commercial use")
-    print("="*80)
+    print("=" * 80)
     print()
-    
-    try:
-        # Show menu and get user choice
-        choice = show_interactive_menu()
 
+    try:
+        choice = show_interactive_menu()
         if choice == 'q':
             print("👋 Goodbye!")
             return
 
-        # Execute based on choice
         if choice == '1':
-            # Security scan with auto-fixes (needs repo selection)
             repo_path = select_repository()
             if not repo_path:
                 return
-            run_security_scan_mode(repo_path)
+            asyncio.run(run_interactive_scan_async(repo_path))
 
     except KeyboardInterrupt:
         print("\n\n👋 Scan cancelled by user")
@@ -1380,6 +477,6 @@ def main() -> None:
         print(f"\n❌ Scan failed: {e}")
         logger.error(f"Scan failed: {e}", exc_info=True)
 
-# Standard Python entry point
+
 if __name__ == "__main__":
     main()

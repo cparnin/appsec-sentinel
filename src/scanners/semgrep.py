@@ -1,11 +1,9 @@
 import subprocess
 import json
 from pathlib import Path
-import logging
 import os
 import sys
 import shlex
-import re
 
 # Import configuration constants
 from config import format_subprocess_error, SCAN_EXCLUDE_PATTERNS
@@ -82,14 +80,6 @@ def run_semgrep(repo_path: str, output_dir: str = None, scan_level: str = None, 
         
         logger.debug(f"Starting Semgrep scan of {repo_path_obj}")
         logger.debug(f"Output file: {output_file}")
-        
-        # Debug: Check if critical files exist
-        critical_files = ['routes/index.js', 'app.js', 'Dockerfile']
-        for file in critical_files:
-            file_path = repo_path_obj / file
-            exists = file_path.exists()
-            size = file_path.stat().st_size if exists else 0
-            logger.debug(f"Critical file check: {file} exists={exists} size={size}")
         
         # Use auto config for consistent rule loading across all environments
         # This downloads the latest available rules and ensures CI/CD vs CLI consistency

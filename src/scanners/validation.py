@@ -7,7 +7,6 @@ to prevent code duplication and ensure consistent security practices.
 
 import os
 from pathlib import Path
-import logging
 from exceptions import ValidationError, BinaryNotFoundError
 from logging_config import get_logger
 
@@ -68,77 +67,101 @@ def validate_binary_path(env_var: str, default_bin: str, raise_on_error: bool = 
             raise BinaryNotFoundError(error_msg, scanner=default_bin)
         return None
 
-def validate_repo_path(repo_path: str, raise_on_error: bool = False) -> Path:
+def validate_repo_path(repo_path: str, raise_on_error: bool = False) -> Path | None:
     """
     Securely validate repository path to prevent command injection and path traversal.
-    
+
+    This is the single source of truth for repo path validation across the project.
+    Includes system directory blocking, permission checks, and git repo detection.
+
     Args:
         repo_path: User-provided repository path
         raise_on_error: If True, raise exceptions instead of returning None
-        
+
     Returns:
         Path: Validated Path object or None if invalid (when raise_on_error=False)
-        
+
     Raises:
         ValidationError: When path validation fails (when raise_on_error=True)
     """
+    def _fail(error_msg: str, details: dict | None = None):
+        logger.error(error_msg)
+        if raise_on_error:
+            raise ValidationError(error_msg, details=details or {'path': repo_path})
+        return None
+
     try:
         # Input sanitization
         if not repo_path or not isinstance(repo_path, str):
-            error_msg = "Repository path must be a non-empty string"
-            logger.error(error_msg)
-            if raise_on_error:
-                raise ValidationError(error_msg, details={'path': repo_path})
-            return None
-            
-        # Remove null bytes and other dangerous characters
+            return _fail("Repository path must be a non-empty string")
+
+        # Check path length early
+        if len(repo_path) > 4096:
+            return _fail("Repository path too long (max 4096 characters)")
+
+        # Remove null bytes
         clean_path = repo_path.replace('\x00', '')
         if clean_path != repo_path:
-            error_msg = "Invalid characters in repository path"
-            logger.error(error_msg)
-            if raise_on_error:
-                raise ValidationError(error_msg, details={'path': repo_path})
-            return None
-            
-        # Check for suspicious patterns
+            return _fail("Invalid characters in repository path")
+
+        # Check for command injection patterns
         dangerous_patterns = [';', '|', '&', '$', '`', '$(', '${']
         if any(pattern in clean_path for pattern in dangerous_patterns):
-            error_msg = "Potentially dangerous characters in repository path"
-            logger.error(error_msg)
-            if raise_on_error:
-                raise ValidationError(error_msg, details={'path': repo_path, 'dangerous_patterns': dangerous_patterns})
-            return None
-            
+            return _fail("Potentially dangerous characters in repository path")
+
         # Convert to Path and resolve
-        path = Path(clean_path).resolve()
-        
-        # Additional security checks
+        try:
+            path = Path(clean_path).resolve()
+        except (OSError, ValueError) as e:
+            return _fail(f"Invalid repository path format: {e}")
+
+        # Path traversal protection
+        if '..' in clean_path:
+            original_parts = Path(clean_path).parts
+            resolved_parts = path.parts
+            if len(resolved_parts) < len(original_parts) - clean_path.count('..'):
+                return _fail("Path traversal attempt detected")
+
+        # Existence and type checks
         if not path.exists():
-            error_msg = f"Repository path does not exist: {path}"
-            logger.error(error_msg)
-            if raise_on_error:
-                raise ValidationError(error_msg, details={'path': str(path)})
-            return None
-            
+            return _fail(f"Repository path does not exist: {path}")
         if not path.is_dir():
-            error_msg = f"Repository path is not a directory: {path}"
-            logger.error(error_msg)
-            if raise_on_error:
-                raise ValidationError(error_msg, details={'path': str(path)})
-            return None
-            
-        # Check path length
-        if len(str(path)) > 4096:
-            error_msg = "Repository path too long"
-            logger.error(error_msg)
-            if raise_on_error:
-                raise ValidationError(error_msg, details={'path': str(path), 'length': len(str(path))})
-            return None
-            
+            return _fail(f"Repository path is not a directory: {path}")
+
+        # Permission check
+        if not os.access(path, os.R_OK):
+            return _fail(f"Repository path is not readable: {path}")
+
+        # Block system directories
+        system_dirs = {
+            Path('/etc'), Path('/sys'), Path('/proc'), Path('/dev'),
+            Path('/boot'), Path('/root'), Path('/var/log'),
+            Path('C:/Windows'), Path('C:/System32'), Path('C:/Program Files')
+        }
+        for sys_dir in system_dirs:
+            try:
+                if sys_dir.exists() and (path == sys_dir or sys_dir in path.parents or path in sys_dir.parents):
+                    return _fail(f"Cannot scan system directory: {path}")
+            except OSError:
+                continue
+
+        # Warn about large directories
+        try:
+            item_count = sum(1 for _ in path.iterdir() if _.is_file() or _.is_dir())
+            if item_count > 10000:
+                logger.warning(f"Large directory detected ({item_count} items). Scan may take a long time.")
+        except (OSError, PermissionError):
+            pass
+
+        # Warn if not a git repository
+        if not (path / '.git').exists():
+            logger.warning(f"Directory is not a git repository: {path}")
+            logger.warning("Some scanners (like gitleaks) require git history to function properly")
+
         return path
-        
+
     except ValidationError:
-        raise  # Re-raise our custom exception
+        raise
     except Exception as e:
         error_msg = f"Error validating repository path: {e}"
         logger.error(error_msg)

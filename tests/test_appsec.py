@@ -191,7 +191,7 @@ class TestLanguageDetection:
     def test_empty_repo(self, temp_dir):
         """Test empty directory."""
         languages = detect_languages(temp_dir)
-        assert isinstance(languages, set)
+        assert isinstance(languages, dict)
         assert len(languages) == 0
 
 

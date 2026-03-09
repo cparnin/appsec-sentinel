@@ -8,14 +8,12 @@ It can use pre-existing Trivy results from GitHub Actions or run Trivy locally.
 
 import subprocess
 import json
-import os
-from pathlib import Path
 import logging
+from pathlib import Path
 from typing import List, Dict, Any
-import shlex
 
-# Import configuration constants  
-from config import format_subprocess_error
+# Import configuration constants
+from config import format_subprocess_error, DEPENDENCY_FILE_PATTERNS
 from .validation import validate_binary_path, validate_repo_path
 
 logger = logging.getLogger(__name__)
@@ -59,14 +57,7 @@ def _run_trivy_scan(repo_path: str, output_file: Path, scan_level: str) -> bool:
         
         # Check what dependency files exist to provide better feedback
         dep_files = []
-        dep_patterns = [
-            "package.json", "package-lock.json", "yarn.lock",
-            "requirements.txt", "Pipfile", "Pipfile.lock", "pyproject.toml",
-            "go.mod", "go.sum", "Cargo.toml", "Cargo.lock",
-            "composer.json", "composer.lock", "pom.xml", "build.gradle"
-        ]
-        
-        for pattern in dep_patterns:
+        for pattern in DEPENDENCY_FILE_PATTERNS:
             matches = list(repo_path_obj.rglob(pattern))
             dep_files.extend(matches)
         
@@ -140,14 +131,8 @@ def _parse_trivy_results(output_file: Path, repo_path: str) -> List[Dict[str, An
 
         # Check for dependency files to provide context
         repo_path_obj = Path(repo_path)
-        dep_patterns = [
-            "package.json", "package-lock.json", "yarn.lock",
-            "requirements.txt", "Pipfile", "Pipfile.lock", "pyproject.toml",
-            "go.mod", "go.sum", "Cargo.toml", "Cargo.lock",
-            "composer.json", "composer.lock", "pom.xml", "build.gradle"
-        ]
         dep_files = []
-        for pattern in dep_patterns:
+        for pattern in DEPENDENCY_FILE_PATTERNS:
             matches = list(repo_path_obj.rglob(pattern))
             dep_files.extend(matches)
 
